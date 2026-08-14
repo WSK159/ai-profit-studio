@@ -1,0 +1,13 @@
+{
+  "name": "github-repos",
+  "urls": [
+    "https://api.github.com/users/WSK159/repos?per_page=5"
+  ],
+  "headers": {
+    "Accept": "application/vnd.github+json"
+  },
+  "rate_limit_per_min": 30,
+  "retries": 3,
+  "mode": "json",
+  "output": "task-26-social-scraper/out/github-repos.jsonl"
+}
