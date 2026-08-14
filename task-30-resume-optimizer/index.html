@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历优化工具</title>
+<style>
+  :root{--bg:#0d0f16;--panel:#161a26;--panel2:#1e2334;--line:#2b3249;--text:#eceef6;--muted:#97a0b8;--accent:#6c8cff;--green:#3ddc97;--red:#ff6b81;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+  header{text-align:center;padding:14px 0}
+  header h1{font-size:26px}header h1 b{color:var(--accent)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  textarea{width:100%;height:260px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.7;outline:none;resize:vertical}
+  textarea:focus{border-color:var(--accent)}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px}
+  .btn.green{background:var(--green);color:#06231a}
+  .btn.ghost{background:var(--panel2);border:1px solid var(--line)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .score{font-size:44px;font-weight:900;text-align:center}
+  .score small{font-size:14px;color:var(--muted)}
+  .bad{color:var(--red)}.mid{color:var(--accent)}.good{color:var(--green)}
+  .tip{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;line-height:1.7}
+  .tip b{color:var(--accent)}
+  .kw{display:inline-block;background:rgba(108,140,255,.14);color:var(--accent);font-size:12px;border-radius:6px;padding:2px 8px;margin:2px}
+  .kw.miss{background:rgba(255,107,129,.14);color:var(--red)}
+  #out{width:100%;height:300px;margin-top:10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;color:var(--text);resize:vertical}
+  details summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>简历<b>优化</b>工具</h1></header>
+  <div class="grid">
+    <div class="card"><label>粘贴你的简历</label><textarea id="resume" placeholder="姓名/联系方式/技能/经历…"></textarea></div>
+    <div class="card"><label>粘贴目标职位描述（JD）</label><textarea id="jd" placeholder="职位要求、技能、职责…"></textarea></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="row">
+      <button class="btn" id="analyze">开始分析</button>
+      <button class="btn ghost" id="demo">填入示例</button>
+      <button class="btn ghost" id="export">导出优化稿</button>
+    </div>
+    <details>
+      <summary>⚙ DeepSeek AI 改写（可选，自备 Key）</summary>
+      <input type="text" id="apiKey" placeholder="sk-..." style="width:100%;margin-top:8px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px">
+      <button class="btn green" id="aiRewrite" style="margin-top:8px">AI 改写简历</button>
+    </details>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between">
+      <label style="margin:0">匹配评分</label>
+      <div id="kws"></div>
+    </div>
+    <div class="score" id="score">--<small> / 100</small></div>
+    <div id="tips"></div>
+    <label style="margin-top:14px">优化稿（可编辑）</label>
+    <textarea id="out"></textarea>
+  </div>
+</div>
+
+<script>
+const ACTIONS=["负责","主导","完成","实现","优化","搭建","推动","落地","产出","提升","管理","协调","设计","开发","分析","解决","培训","搭建","统筹","带领"];
+const DEMO_RESUME="张三，本科，软件工程。\n技能：Python、Java、SQL、React。\n2023-2025 XX科技 后端开发：负责接口开发，写了代码。\n2021-2023 XX软件 开发：做了一些功能。";
+const DEMO_JD="职位：高级后端工程师。要求：精通 Python/Go，熟悉 MySQL、Redis，有高并发项目经验，负责微服务架构设计与性能优化，5 年经验优先。";
+
+function tokenize(text){
+  const tokens=new Set();
+  const zh=(text.match(/[\u4e00-\u9fa5]{2,6}/g)||[]);
+  zh.forEach(w=>tokens.add(w));
+  (text.match(/[A-Za-z][A-Za-z0-9+#.]{1,}/g)||[]).forEach(w=>tokens.add(w.toLowerCase()));
+  return tokens;
+}
+function kwScore(resume,jd){
+  const jdT=tokenize(jd),rv=tokenize(resume);
+  const hits=[...jdT].filter(k=>resume.toLowerCase().includes(k.toLowerCase()));
+  const miss=[...jdT].filter(k=>!resume.toLowerCase().includes(k.toLowerCase()));
+  return {hit:hits,miss:miss.slice(0,12),ratio:jdT.size?hits.length/jdT.size:0};
+}
+function analyze(){
+  const resume=document.getElementById("resume").value;
+  const jd=document.getElementById("jd").value;
+  if(!resume||!jd)return alert("请先填写简历与职位描述");
+  const {hit,miss,ratio}=kwScore(resume,jd);
+  const kws=document.getElementById("kws");
+  kws.innerHTML=hit.map(k=>`<span class="kw">${k}</span>`).join("")+miss.map(k=>`<span class="kw miss">缺:${k}</span>`).join("");
+  const words=resume.length;
+  let score=30;
+  score+=Math.round(ratio*50);
+  if(words>=300&&words<=1200)score+=10;else if(words<300)score+=3;
+  const actionCount=ACTIONS.filter(a=>resume.includes(a)).length;
+  if(actionCount>=3)score+=10;else score+=Math.round(actionCount*3);
+  score=Math.min(98,Math.max(10,score));
+  const el=document.getElementById("score");
+  el.innerHTML=score+"<small> / 100</small>";
+  el.className="score "+(score>=70?"good":score>=45?"mid":"bad");
+  const tips=document.getElementById("tips");tips.innerHTML="";
+  const t=[];
+  if(ratio<0.5)t.push(`<div class="tip"><b>关键词覆盖偏低</b>：JD 中 <b>${miss.length}</b> 个关键词未出现在简历里，建议在技能区/经历中自然补充。</div>`);
+  if(words<300)t.push('<div class="tip"><b>篇幅偏短</b>：建议补充项目成果与量化数据（"提升了 30% 性能"比"写了代码"好得多）。</div>');
+  if(actionCount<3)t.push(`<div class="tip"><b>动词单一</b>：多用「主导/落地/优化/推动」等强动词，避免"负责/参与"。</div>`);
+  if(!/\d+%|\d+倍|\d+万|\d+人/.test(resume))t.push('<div class="tip"><b>缺少量化</b>：为每个项目加一个数字成果。</div>');
+  if(!t.length)t.push('<div class="tip"><b>基础不错</b>：建议再用 AI 改写润色，突出与 JD 的匹配度。</div>');
+  tips.innerHTML=t.join("");
+  let out=resume;
+  if(miss.length){
+    out+="\n\n【建议补充技能/关键词】\n"+miss.map(k=>"- "+k).join("\n");
+  }
+  document.getElementById("out").value=out;
+}
+async function aiRewrite(){
+  const key=document.getElementById("apiKey").value.trim();
+  const resume=document.getElementById("resume").value;
+  const jd=document.getElementById("jd").value;
+  if(!key)return alert("请先填入 DeepSeek API Key");
+  const btn=document.getElementById("aiRewrite");btn.disabled=true;btn.textContent="改写中…";
+  try{
+    const r=await fetch("https://api.deepseek.com/chat/completions",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model:"deepseek-chat",messages:[{role:"system",content:"你是资深 HR 与简历优化专家。重写简历，使其与职位描述更匹配：保留事实、补充量化、使用强动词、突出相关关键词。直接输出改写后的简历。"},{role:"user",content:"职位描述：\n"+jd+"\n\n我的简历：\n"+resume}],temperature:0.7,max_tokens:1500})});
+    const data=await r.json();
+    const text=data.choices[0].message.content;
+    document.getElementById("out").value=text;
+    document.getElementById("resume").value=text;
+  }catch(e){alert("AI 改写失败："+e.message)}
+  btn.disabled=false;btn.textContent="AI 改写简历";
+}
+document.getElementById("analyze").onclick=analyze;
+document.getElementById("demo").onclick=()=>{
+  document.getElementById("resume").value=DEMO_RESUME;
+  document.getElementById("jd").value=DEMO_JD;
+  analyze();
+};
+document.getElementById("export").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([document.getElementById("out").value],{type:"text/plain;charset=utf-8"}));
+  a.download="优化简历.txt";a.click();
+};
+</script>
+</body>
+</html>
