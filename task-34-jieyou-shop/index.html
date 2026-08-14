@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>解忧杂货铺</title>
+<style>
+  :root{--bg:#0e1118;--panel:#161b28;--panel2:#1d2436;--line:#2a3249;--text:#e9ecf5;--muted:#93a0b8;--gold:#ffc24d;--green:#3ddc97;--warm:#ffb37c;--r:16px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .wrap{width:100%;max-width:640px;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  header h1{font-size:22px;letter-spacing:2px;color:var(--warm)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+  .stat .l{font-size:11px;color:var(--muted)}.stat .v{font-size:20px;font-weight:800;margin-top:2px}
+  #story{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px;min-height:230px;display:flex;flex-direction:column;justify-content:space-between}
+  #story .ch{color:var(--muted);font-size:11px;letter-spacing:2px}
+  #story .txt{font-size:15px;line-height:2;margin:12px 0;color:#dfe3ef}
+  #choices{display:flex;gap:10px;flex-wrap:wrap}
+  .ch{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 18px;cursor:pointer;font-size:13px;flex:1;min-width:120px;text-align:center;transition:.15s}
+  .ch:hover{border-color:var(--warm);transform:translateY(-2px)}
+  .ch.sell{color:var(--gold)}.ch.gift{color:var(--green)}.ch.no{color:var(--muted)}
+  #shelf{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px}
+  .item b{color:var(--warm)}
+  .end{text-align:center;padding:30px 10px}
+  .end h2{font-size:24px;margin-bottom:10px}
+  .end p{color:var(--muted);line-height:2}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>解忧杂货铺</h1><div style="font-size:12px;color:var(--muted)">第 <b id="day">1</b> / 10 天</div></header>
+  <div class="stats">
+    <div class="stat"><div class="l">金币</div><div class="v" id="coin" style="color:var(--gold)">50</div></div>
+    <div class="stat"><div class="l">幸福值</div><div class="v" id="happy" style="color:var(--green)">0</div></div>
+    <div class="stat"><div class="l">货品</div><div class="v" id="stock">3</div></div>
+  </div>
+  <div id="story"></div>
+  <div id="shelf">
+    <span style="font-size:12px;color:var(--muted)">货架</span>
+    <div id="items"></div>
+    <button class="ch" id="restock">补货（20 金币）</button>
+  </div>
+</div>
+
+<script>
+const ITEMS=[["热茶","☕"],["面包","🍞"],["围巾","🧣"],["灯笼","🏮"],["糖果","🍬"],["伞","☂️"],["花束","💐"],["蜡烛","🕯"]];
+const CUSTOMERS=[
+  {n:"熬夜的编辑",s:"「赶稿第三天了，困得想哭。」",want:"热茶"},
+  {n:"失恋的姑娘",s:"「他说我们不适合，可外面下雨了。」",want:"伞"},
+  {n:"迷路的小孩",s:"「我找不到回家的路了，叔叔。」",want:"糖果"},
+  {n:"老花匠",s:"「老伴走了以后，花都不爱开了。」",want:"花束"},
+  {n:"加班的医生",s:"「刚下夜班，胃有点疼。」",want:"面包"},
+  {n:"北漂的歌手",s:"「下个月房租交不上了，可我还没红。」",want:"蜡烛"},
+  {n:"回乡的游子",s:"「妈妈织的围巾旧了，我想换一条。」",want:"围巾"},
+  {n:"写生的画家",s:"「这条街的灯，怎么也画不好。」",want:"灯笼"}
+];
+let day=1,coin=50,happy=0,stock=3,customer=null;
+const story=document.getElementById("story");
+function pickC(){customer=CUSTOMERS[Math.floor(Math.random()*CUSTOMERS.length)]}
+function renderShelf(){
+  document.getElementById("items").innerHTML=ITEMS.slice(0,stock).map(i=>`<span class="item">${i[1]} ${i[0]}</span>`).join("");
+}
+function renderStory(){
+  document.getElementById("day").textContent=day;
+  document.getElementById("coin").textContent=coin;
+  document.getElementById("happy").textContent=happy;
+  document.getElementById("stock").textContent=stock;
+  renderShelf();
+  if(day>10){endGame();return}
+  pickC();
+  const has=customer.want;
+  const wantIdx=ITEMS.findIndex(i=>i[0]===has);
+  const sellOk=stock>wantIdx;
+  const giftOk=stock>wantIdx;
+  story.innerHTML=`<div class="ch">第 ${day} 天</div>
+    <div class="txt"><b style="color:var(--warm)">${customer.n}</b>走进铺子。<br>${customer.s}</div>
+    <div id="choices">
+      <div class="ch sell">卖给他 ${has}（+15 金币）</div>
+      <div class="ch gift">送给他 ${has}（+12 幸福）</div>
+      <div class="ch no">抱歉，今天不营业（无事发生）</div>
+    </div>`;
+  const [sell,gift,no]=story.querySelectorAll("#choices .ch");
+  sell.onclick=()=>{
+    if(!sellOk){return flash("货架上没有 "+has+"，先去补货")}
+    coin+=15;next("你把一"+has+"递给他，他付了钱，眼睛亮了一下。");
+  };
+  gift.onclick=()=>{
+    if(!giftOk){return flash("货架上没有 "+has+"，先去补货")}
+    happy+=12;next("你没收钱，他愣了愣，然后笑得很轻很真。");
+  };
+  no.onclick=()=>next("你摇摇头，他有些失落，转身走了。");
+}
+function next(msg){
+  story.innerHTML=`<div class="ch">第 ${day} 天</div><div class="txt">${msg}</div><div id="choices"><div class="ch">进入下一天 →</div></div>`;
+  story.querySelector(".ch").onclick=()=>{day++;renderStory()};
+  renderStats();
+}
+function renderStats(){
+  document.getElementById("coin").textContent=coin;
+  document.getElementById("happy").textContent=happy;
+}
+function flash(m){story.querySelector(".txt").innerHTML+=`<div style="color:var(--red);margin-top:6px">${m}</div>`}
+document.getElementById("restock").onclick=()=>{
+  if(coin<20){alert("金币不足");return}
+  coin-=20;stock=Math.min(ITEMS.length,stock+3);renderStats();renderShelf();
+};
+function endGame(){
+  const good=happy>=60,mid=happy>=30;
+  story.innerHTML=`<div class="end"><h2 style="color:${good?"var(--green)":mid?"var(--gold)":"var(--muted)"}">${good?"灯火通明的小铺":mid?"还算温暖的日子":"安静的杂货铺"}</h2>
+    <p>${good?"十天里，你用热茶和花束换来了一整条街的笑容。杂货铺打烊时，门口排着队，每个人都想来喝一杯热茶。":mid?"有些帮助送出去了，有些话咽了回去。日子不坏，也不算圆满，但橱窗的灯，还亮着。":"你守着货架过了十天，很少有人来。但偶尔有孩子趴在窗口看糖果，你看得出来，他在笑。"}</p>
+    <p style="margin-top:12px;color:var(--muted)">最终：金币 ${coin} · 幸福 ${happy} · 点击下方重新营业</p>
+    <div style="margin-top:16px"><div class="ch" id="again">重新营业</div></div></div>`;
+  document.getElementById("again").onclick=()=>{day=1;coin=50;happy=0;stock=3;renderStory()};
+}
+renderStory();
+</script>
+</body>
+</html>
