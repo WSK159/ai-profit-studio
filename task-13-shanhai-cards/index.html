@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>山海百妖录 · 卡牌</title>
+<style>
+  :root{--bg:#0d0f16;--panel:#161a26;--panel2:#1e2334;--line:#2b3249;--text:#eceef6;--muted:#97a0b8;--gold:#ffc24d;--hp:#ff6b81;--mp:#6c8cff;--green:#3ddc97;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .wrap{width:100%;max-width:720px;padding:14px}
+  header{text-align:center;padding:8px 0 12px}
+  header h1{font-size:24px;letter-spacing:3px}header h1 span{color:var(--gold)}
+  .bars{display:flex;gap:10px;margin-bottom:12px}
+  .bar{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .bar .l{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+  .track{height:8px;background:#221a1e;border-radius:99px;overflow:hidden;margin-top:6px}
+  .track i{display:block;height:100%;border-radius:99px;transition:width .25s}
+  .hp .track i{background:linear-gradient(90deg,#ff6b81,#ff9aa5)}
+  .mp .track i{background:linear-gradient(90deg,#6c8cff,#9bb2ff)}
+  .armor{font-size:12px;color:var(--muted);margin-top:4px}
+  #enemy{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:center;margin-bottom:12px}
+  #enemy h2{font-size:22px;margin-bottom:4px}
+  #enemy .desc{color:var(--muted);font-size:13px}
+  #log{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;height:110px;overflow-y:auto;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px}
+  #hand{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:140px}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;width:110px;padding:10px;cursor:pointer;text-align:center;transition:transform .1s,border .15s;position:relative}
+  .card:hover{transform:translateY(-5px);border-color:var(--gold)}
+  .card.dis{opacity:.45;cursor:not-allowed}
+  .card .cost{position:absolute;top:-7px;left:-7px;background:var(--mp);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+  .card .nm{font-weight:800;font-size:15px;margin-bottom:4px}
+  .card .tp{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .card .tx{font-size:11px;line-height:1.5;color:#cdd3e4}
+  .row{display:flex;gap:8px;justify-content:center;margin-top:12px}
+  .btn{background:var(--gold);color:#2a1d00;border:none;border-radius:999px;padding:10px 26px;font-size:14px;font-weight:800;cursor:pointer}
+  .btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+  #reward{position:fixed;inset:0;background:rgba(8,10,16,.88);display:none;align-items:center;justify-content:center;z-index:9}
+  #reward .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;text-align:center;max-width:520px}
+  #reward h3{color:var(--gold);margin-bottom:16px}
+  #reward .opts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  #reward .opt{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;width:130px;cursor:pointer}
+  #reward .opt:hover{border-color:var(--gold)}
+  #reward .opt b{font-size:15px}
+  #reward .opt p{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>山海<span>百妖录</span></h1></header>
+  <div class="bars">
+    <div class="bar hp"><div class="l"><span>你 · 驱妖人</span><span><b id="php">80</b>/80</span></div><div class="track"><i id="phbar"></i></div><div class="armor">护甲 <b id="parmor">0</b> · 第 <b id="wave">1</b> 战</div></div>
+    <div class="bar mp"><div class="l"><span>灵力</span><span><b id="mp">3</b>/10</span></div><div class="track"><i id="mpbar"></i></div><div class="armor">卡组 <b id="deckn">0</b> · 弃牌 <b id="discn">0</b></div></div>
+  </div>
+  <div id="enemy">
+    <h2 id="ename">山精</h2>
+    <div class="desc" id="edesc">山林中的小妖，会扔石头。</div>
+    <div style="margin:8px auto;max-width:340px"><div class="track"><i id="ehbar" style="width:100%;background:linear-gradient(90deg,#c084fc,#e2b3ff)"></i></div></div>
+    <div class="armor">生命 <b id="ehp">0</b>/0 · 下回合将攻击 <b id="eatk">0</b></div>
+  </div>
+  <div id="log"></div>
+  <div id="hand"></div>
+  <div class="row">
+    <button class="btn" id="endTurn">结束回合</button>
+    <button class="btn ghost" id="restart">重开</button>
+  </div>
+</div>
+<div id="reward"><div class="box"><h3>击败妖物 · 三选一</h3><div class="opts" id="opts"></div></div></div>
+
+<script>
+"use strict";
+const CARD_DEFS=[
+  {n:"灵木击",t:"攻击",cost:1,tx:"造成 5 伤害",atk:5,kind:"atk"},
+  {n:"山岳拳",t:"攻击",cost:2,tx:"造成 8 伤害",atk:8,kind:"atk"},
+  {n:"裂空爪",t:"攻击",cost:3,tx:"造成 12 伤害",atk:12,kind:"atk"},
+  {n:"玄武甲",t:"防御",cost:1,tx:"获得 4 护甲",arm:4,kind:"def"},
+  {n:"玄龟盾",t:"防御",cost:2,tx:"获得 7 护甲",arm:7,kind:"def"},
+  {n:"摄魂铃",t:"法术",cost:1,tx:"造成 4 伤害，回复 3 血",atk:4,heal:3,kind:"mag"},
+  {n:"灵犀一指",t:"法术",cost:2,tx:"造成 6 伤害，抽 1 张牌",atk:6,draw:1,kind:"mag"},
+  {n:"祝融火",t:"法术",cost:3,tx:"造成 10 伤害",atk:10,kind:"mag"},
+  {n:"青丘魅影",t:"法术",cost:2,tx:"造成 5 伤害，获得 4 护甲",atk:5,arm:4,kind:"mag"},
+  {n:"神农百草",t:"法术",cost:1,tx:"回复 8 生命",heal:8,kind:"mag"},
+  {n:"蚩尤之怒",t:"攻击",cost:4,tx:"造成 16 伤害",atk:16,kind:"atk"},
+  {n:"昆仑镇岳",t:"防御",cost:3,tx:"获得 11 护甲",arm:11,kind:"def"}
+];
+const ENEMIES=[
+  {n:"山精",d:"山林小妖，丢石头最在行",hp:28,atk:6},
+  {n:"狐妖",d:"青丘狐魅，善惑人心",hp:34,atk:7},
+  {n:"夜叉",d:"海中之鬼，力大无穷",hp:42,atk:9},
+  {n:"穷奇",d:"四凶之一，食人凶兽",hp:52,atk:11},
+  {n:"年兽",d:"上古凶兽·最终Boss",hp:70,atk:13}
+];
+let P,enemy,wave,hand,deck,disc,log,rewarding;
+
+function rnd(n){return Math.floor(Math.random()*n)}
+function buildDeck(){
+  const d=[];
+  CARD_DEFS.forEach(c=>{
+    const cnt=c.cost<=2?3:1;
+    for(let i=0;i<cnt;i++)d.push({...c});
+  });
+  return d;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function draw(n){
+  while(n--&&P.hp>0){
+    if(!deck.length){deck=shuffle(disc);disc=[]}
+    if(deck.length)hand.push(deck.pop());
+  }
+}
+function startBattle(){
+  enemy={...ENEMIES[Math.min(wave-1,ENEMIES.length-1)]};
+  enemy.max=enemy.hp;enemy.armor=0;
+  hand=[];deck=shuffle(buildDeck());disc=[];P.mp=3;P.armor=0;
+  draw(5);render();logTo("遭遇【"+enemy.n+"】"+enemy.d);
+}
+function newGame(){P={hp:80,max:80,mp:3,armor:0};wave=1;rewarding=false;startBattle()}
+function play(card){
+  if(rewarding||P.hp<=0)return;
+  if(P.mp<card.cost)return;
+  P.mp-=card.cost;
+  hand.splice(hand.indexOf(card),1);
+  if(card.atk)damageEnemy(card.atk);
+  if(card.arm)P.armor+=card.arm;
+  if(card.heal)P.hp=Math.min(P.max,P.hp+card.heal);
+  if(card.draw)draw(card.draw);
+  disc.push(card);
+  render();
+  if(enemy&&enemy.hp<=0)winBattle();
+}
+function damageEnemy(n){
+  const d=Math.max(1,n);
+  enemy.hp-=d;
+  logTo("你对【"+enemy.n+"】造成 "+d+" 伤害");
+}
+function endTurn(){
+  if(rewarding||P.hp<=0)return;
+  if(enemy.hp>0){
+    let d=Math.max(1,enemy.atk-P.armor);
+    P.armor=Math.max(0,P.armor-enemy.atk);
+    P.hp-=d;
+    logTo("【"+enemy.n+"】攻击你，造成 "+d+" 伤害"+(P.armor?"（护甲抵挡）":""));
+    if(P.hp<=0){P.hp=0;render();logTo("💀 你被妖物击败了…");return}
+  }
+  P.mp=Math.min(10,P.mp+3);
+  disc.push(...hand);hand=[];
+  draw(5);
+  render();
+}
+function winBattle(){
+  rewarding=true;
+  const opts=shuffle(CARD_DEFS).slice(0,3);
+  document.getElementById("reward").style.display="flex";
+  const box=document.getElementById("opts");box.innerHTML="";
+  opts.forEach(c=>{
+    const d=document.createElement("div");d.className="opt";
+    d.innerHTML=`<b>${c.n}</b><p>${c.tx}</p>`;
+    d.onclick=()=>{
+      deck.push({...c});shuffle(deck);
+      document.getElementById("reward").style.display="none";
+      rewarding=false;
+      wave++;
+      if(wave>ENEMIES.length){
+        logTo("🏆 你降服了年兽，山海重归安宁！");
+        P.hp=Math.min(P.max,P.hp+30);
+        startBattle();
+      }else{
+        P.hp=Math.min(P.max,P.hp+12);
+        startBattle();
+      }
+    };
+    box.appendChild(d);
+  });
+}
+function logTo(s){const l=document.getElementById("log");l.innerHTML+=`<div>${s}</div>`;l.scrollTop=l.scrollHeight}
+function render(){
+  document.getElementById("php").textContent=Math.max(0,P.hp);
+  document.getElementById("phbar").style.width=Math.max(0,P.hp/P.max*100)+"%";
+  document.getElementById("parmor").textContent=P.armor;
+  document.getElementById("mp").textContent=P.mp;
+  document.getElementById("mpbar").style.width=P.mp/10*100+"%";
+  document.getElementById("wave").textContent=wave;
+  document.getElementById("deckn").textContent=deck.length;
+  document.getElementById("discn").textContent=disc.length;
+  if(enemy){
+    document.getElementById("ename").textContent=enemy.n+(wave>ENEMIES.length?"·轮回":"");
+    document.getElementById("edesc").textContent=enemy.d;
+    document.getElementById("ehp").textContent=Math.max(0,enemy.hp)+"/"+enemy.max;
+    document.getElementById("ehbar").style.width=Math.max(0,enemy.hp/enemy.max*100)+"%";
+    document.getElementById("eatk").textContent=enemy.atk;
+  }
+  const hb=document.getElementById("hand");hb.innerHTML="";
+  hand.forEach(c=>{
+    const d=document.createElement("div");
+    d.className="card"+(P.mp<c.cost?" dis":"");
+    d.innerHTML=`<div class="cost">${c.cost}</div><div class="nm">${c.n}</div><div class="tp">${c.t}</div><div class="tx">${c.tx}</div>`;
+    d.onclick=()=>play(c);
+    hb.appendChild(d);
+  });
+  if(P.hp<=0&&!rewarding)logTo("点「重开」再来一局");
+}
+document.getElementById("endTurn").onclick=endTurn;
+document.getElementById("restart").onclick=()=>{logTo("— 重新开始 —");newGame()};
+newGame();
+</script>
+</body>
+</html>

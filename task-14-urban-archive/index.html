@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>都市怪谈档案</title>
+<style>
+  :root{--bg:#0b0d13;--panel:#12161f;--panel2:#191e2b;--line:#273046;--text:#e6e9f2;--muted:#8b94ab;--accent:#9f7cff;--red:#ff6b81;--green:#3ddc97;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .wrap{width:100%;max-width:640px;padding:18px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  header h1{font-size:22px;letter-spacing:3px;color:var(--accent)}
+  header small{color:var(--muted)}
+  #card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px;min-height:300px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  #chapter{color:var(--accent);font-size:12px;letter-spacing:2px;margin-bottom:10px}
+  #text{font-size:16px;line-height:2;color:#d8dce8;white-space:pre-wrap}
+  #choices{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+  .ch{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;cursor:pointer;font-size:14px;transition:all .15s;color:#dfe3ef}
+  .ch:hover{border-color:var(--accent);transform:translateX(4px)}
+  .ch.need{opacity:.45;cursor:not-allowed}
+  #clues{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .clue{background:rgba(159,124,255,.12);border:1px solid rgba(159,124,255,.35);color:var(--accent);font-size:12px;border-radius:999px;padding:4px 12px}
+  .end{color:var(--red);font-weight:800}
+  .btn{margin-top:14px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:9px 22px;font-size:13px;cursor:pointer}
+  .toast{position:fixed;top:22px;left:50%;transform:translateX(-50%);background:#232a40;color:#fff;padding:9px 18px;border-radius:999px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>都市怪谈档案</h1><small>档案号：U-13-77</small></header>
+  <div id="card">
+    <div id="chapter"></div>
+    <div id="text"></div>
+    <div id="choices"></div>
+    <div id="clues"></div>
+  </div>
+  <button class="btn" id="restart">重新开始</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORY={
+  start:{
+    ch:"序章",t:"深夜十一点，市档案局三楼只剩下你一个人。\n你整理着积压的旧档案，忽然发现一个牛皮纸袋——没有编号，没有归档人，封口处用红绳系着一枚小小的护身符。\n纸袋里只有一页纸，写着：\n「雾江小区 13 号楼，2021 年 7 月，12 户，全部失踪。调查员：温故。档案未完成。」\n纸的背面，有人用铅笔写了一句：不要继续。",
+    choices:[
+      {t:"拨通温故留下的联系电话",go:"phone"},
+      {t:"驱车前往雾江小区 13 号楼",go:"site",add:"车钥匙"},
+      {t:"把档案放回原处，当没看见",go:"leave"}
+    ]
+  },
+  phone:{
+    ch:"第一章 · 电话",t:"电话响了三声，接通了。\n对面是一个很轻的女声：「你拿到档案了？」\n你还没回答，她说：「听好——13 号楼的门牌是反的。进去以后，不要数楼层。不要……」\n电话那头忽然传来一阵电流声，随后是忙音。\n你看了看手机，通话时长显示：3 秒。\n可你明明说了不止三秒的话。",
+    choices:[
+      {t:"再去看看那通电话的号码",go:"phonenum",add:"录音带"},
+      {t:"直接去 13 号楼",go:"site"},
+      {t:"查温故的档案",go:"wen"}
+    ]
+  },
+  phonenum:{
+    ch:"第一章 · 号码",t:"通话记录里，那串号码的归属地是「雾江市」。\n你再拨回去，这次对面是空号提示。\n你在纸袋夹层里摸到一卷录音带，标签上写着「温故 · 7 月 12 日」。\n你没有录音机，只能先收好。",
+    choices:[{t:"去 13 号楼",go:"site"}]
+  },
+  wen:{
+    ch:"第一章 · 温故",t:"你在档案系统里搜「温故」。\n系统显示：温故，市档案局调查员，2021 年 7 月 15 日因公殉职，死因：坠楼。\n坠楼地点：雾江小区 13 号楼。\n也就是说，她在失踪案发生后的第三天，死在了那栋楼。\n你握着那页纸，纸角有些发潮。",
+    choices:[{t:"去 13 号楼",go:"site"}]
+  },
+  leave:{
+    ch:"第一章 · 归还",t:"你把档案放回原处，锁好柜子。\n回家路上，你总觉得后颈发凉。\n第二天，同事问你：昨晚是不是有人来过？桌上多了一页纸，写着「你见过它了」。\n那天之后，你每天都会梦见 13 号楼。",
+    choices:[{t:"返回档案局，把档案拿走",go:"site"},{t:"烧掉那页纸",go:"burn"}]
+  },
+  burn:{
+    ch:"结局 · 被遗忘",t:"你把那页纸烧了。\n火苗蹿起来的时候，你听见一个很轻的声音，像从纸里发出来的：「谢谢你放我走。」\n三个月后，档案局里再没有人记得 13 号楼的案子。\n你也不记得自己为什么总是失眠。\n只是偶尔，你会梦见一栋楼，楼里 12 扇窗户，全都亮着灯。",
+    end:"结局：被遗忘",tone:"end"
+  },
+  site:{
+    ch:"第二章 · 13 号楼",t:"雾江小区早就废弃了。\n13 号楼立在小区最深处，外墙爬满藤蔓，楼下的铁门锈得发黑。\n门牌号挂在门边——你低头看，门牌上的「13」是反的。\n你想起电话里那句「不要数楼层」，抬头望去，楼道里的声控灯一层层亮起来，又一层层灭下去，一直亮到顶层。\n顶层有 12 层。可这栋楼，明明天只有 9 层。",
+    choices:[
+      {t:"带上门牌号，上楼",go:"floor",need:"录音带",needTxt:"（需要线索：录音带——先去查电话/温故）"},
+      {t:"先检查门牌背面",go:"plate",add:"门牌"},
+      {t:"退出去，找物业老张",go:"zhang"}
+    ]
+  },
+  zhang:{
+    ch:"第二章 · 老张",t:"老张是这片的老物业，抽着烟，听你说完，脸色变了：「13 号楼早封了，你别进去。」\n他犹豫半天，塞给你一张发黄的旧报纸：「2021 年 7 月 14 日的，你自己看。」\n报纸头条：「雾江小区 13 号楼住户集体失联，调查员温故坠楼身亡。」\n角落里还有一行小字：「居民称，7 月 12 日夜里曾听见楼里传来'有人敲门'的声音，但敲门声来自楼内。」",
+    choices:[{t:"返回 13 号楼",go:"site",add:"旧报纸"}]
+  },
+  plate:{
+    ch:"第二章 · 门牌",t:"你把反着的门牌拆下来。\n背面刻着一行小字：\n「此楼不在此楼中。」\n门牌背面还贴着一小块胶布，胶布下压着一枚护身符，和你纸袋上那枚一模一样。\n你把护身符放进兜里。",
+    choices:[{t:"上楼",go:"floor",add:"护身符"}]
+  },
+  floor:{
+    ch:"第三章 · 楼层",t:"你开始爬楼。\n一楼，二楼……你在心里默数，强迫自己不去看门牌。\n数到第九层，楼梯还在往上。\n第十层。第十一层。第十二层。\n你终于到了顶层，走廊尽头的门虚掩着，门里透出昏黄的光。\n你推开门，看见一张长桌，桌上放着 12 只碗，碗里是温热的粥。\n桌边坐着 12 个人，他们抬头看你，齐声说：「来齐了。」",
+    choices:[
+      {t:"问他们是谁",go:"who"},
+      {t:"找温故",go:"findwen"},
+      {t:"转身就跑",go:"run"}
+    ]
+  },
+  who:{
+    ch:"第三章 · 十二人",t:"12 个人都穿着睡衣，像刚从床上起来。\n他们说自己是被「请」来吃粥的，已经吃了三年。\n「请你的人，每晚都要来。」一个老太太说，「楼里缺一个人，就补一个人。」\n你数了数：12 个人，加上你，13 个。\n不，等等——桌边还多了一把空椅子。\n13 号楼，13 个人。",
+    choices:[{t:"问那把椅子是谁的",go:"chair"},{t:"掀桌",go:"rage"},{t:"把护身符放到空椅子上",go:"offer",need:"护身符",needTxt:"（需要线索：护身符——先检查门牌背面）"}]
+  },
+  chair:{
+    ch:"第三章 · 空椅子",t:"「那把椅子……」老太太说，「是留给'楼'的。楼没有名字，楼需要一个名字。」\n你忽然明白：13 号楼在收集名字。\n它请人进来，是为了让人把名字「留下」。\n你低头，发现桌角的名单上，最后一行写着：温故。\n温故的名字后面，还有一行新写的、墨迹未干的字——\n是你的名字。",
+    choices:[{t:"撕掉名单",go:"tear"},{t:"坐上空椅子",go:"sit"}]
+  },
+  findwen:{
+    ch:"第三章 · 温故",t:"你在人群里找温故。\n12 个人都说没见过她。\n可你注意到，桌上那碗离你最近的粥，碗底压着一张纸，折成四方：\n「如果你看到这张纸，说明你还记得我。13 号楼不是楼，是一扇门。门后面是它。别让它知道你知道。——温故」\n纸的背面写着：跑。",
+    choices:[{t:"照温故说的，跑",go:"run"},{t:"留下，问个明白",go:"stay"}]
+  },
+  run:{
+    ch:"第四章 · 跑",t:"你转身就跑。\n楼梯在你脚下不断延伸，你数不清自己下了多少层。\n身后没有脚步声，但你知道它跟着你——因为每一层的声控灯，都恰好在你踩上台阶时亮起。\n你终于撞开一楼铁门，冲进夜色里。\n回头望去，13 号楼的窗户全部亮着，像 12 只眼睛。\n你逃出来了。\n但你低头，发现手里攥着一张纸，上面写着：「下次来，记得把名字留下。」",
+    choices:[{t:"把档案交给警方",go:"police"},{t:"烧掉档案",go:"burn"}]
+  },
+  stay:{
+    ch:"第四章 · 留下",t:"你留下来了。\n你坐到 12 个人中间，喝了那碗粥。\n粥是甜的，像放了太多糖。\n老太太笑了：「好孩子，楼里有你的名字了。」\n你抬头，看见天花板上密密麻麻写满了名字——12 户、42 个人的名字，最上面一行，是温故。\n最下面一行，是你。",
+    choices:[{t:"用护身符划掉自己的名字",go:"offer",need:"护身符",needTxt:"（需要线索：护身符）"},{t:"接受",go:"accept"}]
+  },
+  offer:{
+    ch:"第四章 · 供奉",t:"你把护身符放到空椅子上。\n12 个人的眼睛同时看向你。\n「这不是楼要的东西。」老太太的声音变了，「楼要的是名字。你给的，是'拒绝'。」\n天花板的字迹开始发烫，整栋楼剧烈震颤。\n护身符爆出一团白光，你被一股力量推出门外。\n你滚下楼梯，摔在一楼。\n抬头，13 号楼已经不见了——那里只剩一片空地，和一株枯死的梧桐。",
+    choices:[{t:"查看空地",go:"truth",need:"旧报纸",needTxt:"（需要线索：旧报纸——先找物业老张）"},{t:"离开",go:"good"}]
+  },
+  tear:{
+    ch:"结局 · 坏",t:"你撕掉名单。\n纸屑没有落地，而是悬浮在半空，然后自行拼合，恢复如初。\n12 个人同时站起来，他们的脸在昏黄的灯下像融化的蜡。\n「楼生气了。」\n你醒来的地方，是雾江小区门口的长椅上。\n你的包还在，证件还在。\n只是你想不起自己叫什么名字了。\n（档案袋的封口处，那枚护身符不见了。）",
+    end:"结局：坏 · 楼记住了你",tone:"end"
+  },
+  sit:{
+    ch:"结局 · 普通",t:"你坐上空椅子。\n12 个人同时松了口气。\n「终于来齐了。」\n你成为第 13 个人。\n第二天早上，雾江小区 13 号楼 13 户居民全部「失踪」，档案局多了一份没有编号的档案，封口系着红绳和护身符。\n三年后，深夜，一个年轻的档案管理员在整理旧档时发现了它。\n她拨通了那页纸上留下的电话……",
+    end:"结局：轮回 · 档案员",tone:"end"
+  },
+  rage:{
+    ch:"结局 · 反抗",t:"你掀了桌子。\n粥碗碎了一地，12 个人却都笑了。\n「好多年没有人掀过桌子了。」\n楼顶传来一声叹息，像整栋楼在叹气。\n然后，一切开始褪色——墙壁、灯光、人脸，像旧照片一样发黄。\n你醒来时躺在档案局的值班室，手里攥着那页纸。\n纸上多了一行字：「这一局，你赢了。下一局，还会有人来。」\n窗外天已经亮了。",
+    end:"结局：反抗 · 未完待续",tone:"end"
+  },
+  police:{
+    ch:"结局 · 好",t:"你把档案和线索交给了警方。\n专案组封锁了雾江小区，工人在 13 号楼旧址的地下挖出一间地窖。\n地窖里有一扇锈死的铁门，门背面刻着一行字：「此楼不在此楼中。」\n铁门被打开那天，全市的声控灯同时亮了一瞬。\n没有人敢再动那扇门。\n但你记得温故，记得 12 个人，记得那碗粥。\n你成了新的调查员。\n档案局给你配的办公室里，抽屉里永远放着一枚护身符——你自己买的，和原来那枚一模一样。",
+    end:"结局：好 · 新的调查员",tone:"end"
+  },
+  good:{
+    ch:"结局 · 好 · 自由",t:"你离开了雾江小区。\n三天后，新闻说 13 号楼旧址出现塌陷，形成一口深坑。\n没有人知道坑有多深。\n你回到档案局，把那页纸重新装进牛皮纸袋，系上红绳，放进最深处的柜子。\n你在纸袋背面补了一行字：\n「档案未完成。调查员：温故（殉职）。续档：我。」\n窗外，阳光正好。",
+    end:"结局：好 · 续档",tone:"end"
+  },
+  truth:{
+    ch:"真相 · 终章",t:"你翻开那张旧报纸，对照空地上梧桐树的位置。\n报纸角落还有一行字，你之前没注意：\n「1958 年，此处原为'雾江县第十三号粮仓'，同年失火，12 名守仓人殉职。」\n你终于明白了。\n13 号楼不是楼，是那 12 个守仓人的执念。\n他们等了一辈子，等一个「第 13 个人」来替他们守住仓。\n你手里的护身符，是温故留给后来者的钥匙——她不是去调查的，她是去「接班的」。\n你蹲下来，把护身符埋进梧桐树根下。\n风停了。\n远处，隐约传来一声长长的、松了气的叹息。\n13 号楼旧址上，长出了一株新的梧桐。",
+    end:"真相结局：第十三棵梧桐",tone:"end"
+  },
+  accept:{
+    ch:"结局 · 献名",t:"你接受了。\n你的名字被写上天花板的那一刻，你忽然觉得很安心。\n原来被记住，是这种感觉。\n12 个人给你让出一个位置，老太太给你盛了第二碗粥。\n「楼会记住你的。」\n你点点头。\n窗外，13 号楼的灯，又亮了一盏。",
+    end:"结局：献名 · 楼记住了你",tone:"end"
+  }
+};
+
+let clues=[],node="start";
+const $=id=>document.getElementById(id);
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1400)}
+function go(n){
+  node=n;const s=STORY[n];if(!s)return;
+  $("chapter").textContent=s.ch||"";
+  $("text").textContent=s.t;
+  const c=$("choices");c.innerHTML="";
+  if(s.choices){
+    s.choices.forEach(ch=>{
+      const b=document.createElement("div");b.className="ch";
+      const locked=ch.need&&!clues.includes(ch.need);
+      if(locked)b.classList.add("need");
+      b.textContent=ch.t+(locked?"（缺少线索）":"");
+      b.onclick=()=>{
+        if(locked){toast("缺少线索："+ch.need);return}
+        if(ch.add&&!clues.includes(ch.add)){clues.push(ch.add);toast("获得线索："+ch.add);renderClues()}
+        go(ch.go);
+      };
+      c.appendChild(b);
+    });
+  }
+  if(s.end){
+    const b=document.createElement("div");b.className="ch end";
+    b.textContent="◆ "+s.end;
+    c.appendChild(b);
+    $("text").style.color="#ff9aa5";
+    localStorage.setItem("urban_last_end",s.end);
+  }else{
+    $("text").style.color="";
+  }
+  renderClues();
+}
+function renderClues(){
+  $("clues").innerHTML=clues.length?clues.map(c=>`<span class="clue">${c}</span>`).join(""):"";
+}
+$("restart").onclick=()=>{clues=[];go("start")};
+go("start");
+</script>
+</body>
+</html>
