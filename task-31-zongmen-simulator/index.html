@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>修仙宗门模拟器</title>
+<style>
+  :root{--bg:#0c0f16;--panel:#141926;--panel2:#1b2132;--line:#2a3249;--text:#e9ecf5;--muted:#8f99b1;--gold:#ffc24d;--blue:#6c8cff;--green:#3ddc97;--red:#ff6b81;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  .wrap{max-width:860px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 14px}
+  header h1{font-size:22px;letter-spacing:2px}header h1 span{color:var(--gold)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .stat .l{font-size:11px;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:800;margin-top:2px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  .build{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:640px){.build{grid-template-columns:1fr 1fr}}
+  .b{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .b h3{font-size:14px;margin-bottom:4px}
+  .b .out{color:var(--green);font-size:12px;min-height:30px}
+  .b .btn{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;width:100%}
+  .b .btn:disabled{opacity:.45;cursor:not-allowed}
+  #events{max-height:150px;overflow-y:auto;font-size:12px;color:var(--muted);line-height:1.8}
+  #events div{border-bottom:1px dashed rgba(42,48,73,.5);padding:4px 0}
+  .fight{background:linear-gradient(135deg,rgba(255,107,129,.16),transparent);border:1px solid rgba(255,107,129,.35);border-radius:12px;padding:12px;margin-top:10px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .fight .btn{background:var(--red);color:#fff;border:none;border-radius:9px;padding:8px 16px;font-weight:800;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>修仙<span>宗门</span>模拟器</h1><div style="font-size:12px;color:var(--muted)" id="tick">第 1 年</div></div>
+  <div class="stats">
+    <div class="stat"><div class="l">灵石</div><div class="v" id="stone" style="color:var(--blue)">100</div></div>
+    <div class="stat"><div class="l">丹药</div><div class="v" id="pill" style="color:var(--green)">20</div></div>
+    <div class="stat"><div class="l">声望</div><div class="v" id="fame" style="color:var(--gold)">0</div></div>
+    <div class="stat"><div class="l">弟子</div><div class="v" id="disc">10</div></div>
+  </div>
+  <div class="card">
+    <div class="build" id="builds"></div>
+    <div id="fightArea"></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:8px">宗门大事记</h3>
+    <div id="events"><div>掌门闭关，宗门正式开山。</div></div>
+  </div>
+</div>
+
+<script>
+const S={
+  stone:100,pill:20,fame:0,disc:10,year:1,
+  buildings:{
+    waimen:{n:"外门灵田",lvl:1,cost:[80,50],out:()=>1.5*S.buildings.waimen.lvl,desc:"产出灵石/秒"},
+    danfang:{n:"丹房",lvl:0,cost:[120,0],out:()=>0.4*S.buildings.danfang.lvl,desc:"产出丹药/秒"},
+    jiangjing:{n:"讲经堂",lvl:0,cost:[200,40],out:()=>0.6*S.buildings.jiangjing.lvl,desc:"产出声望/秒"},
+    hufeng:{n:"护峰大阵",lvl:0,cost:[300,80],out:()=>2*S.buildings.hufeng.lvl,desc:"抵御兽潮"}
+  }
+};
+let fighting=null,eventTimer=0;
+
+function fmt(n){return n>=10000?(n/10000).toFixed(1)+"万":Math.floor(n)}
+function render(){
+  $("stone").textContent=fmt(S.stone);
+  $("pill").textContent=fmt(S.pill);
+  $("fame").textContent=fmt(S.fame);
+  $("disc").textContent=S.disc;
+  $("tick").textContent="第 "+S.year+" 年";
+  const box=$("builds");box.innerHTML="";
+  Object.entries(S.buildings).forEach(([k,b])=>{
+    const d=document.createElement("div");d.className="b";
+    d.innerHTML=`<h3>${b.n} Lv.${b.lvl}</h3><div class="out">${b.desc}<br>${b.out().toFixed(1)}/秒</div>
+      <button class="btn" id="up-${k}">升级 ${b.cost[0]}石 ${b.cost[1]>0?b.cost[1]+"丹":""}</button>`;
+    const btn=d.querySelector("button");
+    const can=S.stone>=b.cost[0]&&S.pill>=b.cost[1];
+    btn.disabled=!can;
+    btn.onclick=()=>{
+      if(!can)return;
+      S.stone-=b.cost[0];S.pill-=b.cost[1];
+      b.lvl++;b.cost=[Math.round(b.cost[0]*1.8),Math.round(b.cost[1]*1.8)];
+      log(b.n+" 升级到 Lv."+b.lvl);
+      render();
+    };
+    box.appendChild(d);
+  });
+  const fa=$("fightArea");
+  if(fighting){
+    fa.innerHTML=`<div class="fight"><div><b>${fighting.n}</b> 来袭！战力 ${fighting.power}（护峰 ${S.buildings.hufeng.out().toFixed(0)}）</div><button class="btn">迎战</button></div>`;
+    fa.querySelector("button").onclick=()=>{
+      const def=S.buildings.hufeng.out();
+      if(def>=fighting.power){
+        S.fame+=fighting.reward;S.pill+=Math.floor(fighting.power/5);
+        log("⚔ 击退"+fighting.n+"，声望 +"+fighting.reward);
+        fighting=null;render();
+      }else{
+        S.stone=Math.max(0,S.stone-Math.floor(fighting.power*2));
+        log("💔 护峰失守，"+"被"+fighting.n+"抢走 "+Math.floor(fighting.power*2)+" 灵石");
+        fighting=null;render();
+      }
+    };
+  }else fa.innerHTML="";
+}
+function log(s){const e=$("events");e.insertAdjacentHTML("afterbegin","<div>"+s+"</div>");while(e.children.length>50)e.removeChild(e.lastChild)}
+function $id(x){return document.getElementById(x)}
+function $(){return document.getElementById.apply(document,arguments)}
+setInterval(()=>{
+  const w=S.buildings.waimen.out(),d=S.buildings.danfang.out(),j=S.buildings.jiangjing.out();
+  S.stone+=w;S.pill+=d;S.fame+=j;
+  eventTimer++;
+  if(eventTimer%20===0){
+    S.year++;
+    const r=Math.random();
+    if(r<0.35){
+      const power=(S.year*3)+S.buildings.hufeng.lvl*2;
+      fighting={n:["妖兽群","魔修劫掠","兽潮"][Math.floor(Math.random()*3)],power,reward:S.year*5+10};
+      log("⚠ "+fighting.n+" 正在逼近！");
+    }else if(r<0.55){
+      S.disc+=1;log("🎓 一名散修拜入山门，弟子 +1");
+    }else if(r<0.7){
+      S.stone+=Math.round(S.year*15);log("💰 山门拍卖会成交，灵石 +"+Math.round(S.year*15));
+    }else{
+      S.pill+=Math.round(S.year*5);log("🧪 丹房炼出珍品，丹药 +"+Math.round(S.year*5));
+    }
+  }
+  render();
+},1000);
+log("弟子们开始忙碌起来。");
+render();
+</script>
+</body>
+</html>

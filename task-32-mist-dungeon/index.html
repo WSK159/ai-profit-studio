@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>迷雾地牢 · 肉鸽</title>
+<style>
+  :root{--bg:#0b0e15;--panel:#131827;--panel2:#1a2133;--line:#29314a;--text:#e9ecf5;--muted:#93a0b8;--accent:#9f7cff;--gold:#ffc24d;--green:#3ddc97;--red:#ff6b81;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  .wrap{max-width:760px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 14px}
+  header h1{font-size:24px;letter-spacing:2px}header h1 span{color:var(--accent)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(3,1fr)}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:center}
+  .stat .l{font-size:10px;color:var(--muted)}
+  .stat .v{font-size:18px;font-weight:800}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  h3{font-size:15px;margin-bottom:10px;color:var(--muted)}
+  .eq{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .slot{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;min-height:110px}
+  .slot b{font-size:14px}
+  .slot .afx{font-size:11px;color:var(--gold);margin-top:6px;line-height:1.6}
+  .path{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .room{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;flex:1;min-width:130px;cursor:pointer;text-align:center;transition:.15s}
+  .room:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .room .ico{font-size:26px}
+  .room .nm{font-size:13px;font-weight:800;margin-top:4px}
+  .room .ds{font-size:11px;color:var(--muted);margin-top:4px}
+  #log{max-height:170px;overflow-y:auto;font-size:12px;color:var(--muted);line-height:1.8}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:800;cursor:pointer;margin-top:10px}
+  .loot{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+  .loot .item{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;width:150px;cursor:pointer;text-align:center}
+  .loot .item:hover{border-color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>迷雾<span>地牢</span></h1><div style="font-size:12px;color:var(--muted)">历史最佳 <b id="best" style="color:var(--gold)">0</b> 层</div></header>
+  <div class="stats">
+    <div class="stat"><div class="l">层数</div><div class="v" id="floor">1</div></div>
+    <div class="stat"><div class="l">生命</div><div class="v" id="hp" style="color:var(--red)">100</div></div>
+    <div class="stat"><div class="l">攻击</div><div class="v" id="atk">10</div></div>
+    <div class="stat"><div class="l">暴击</div><div class="v" id="crit" style="color:var(--gold)">5%</div></div>
+    <div class="stat"><div class="l">吸血</div><div class="v" id="vamp" style="color:var(--green)">0%</div></div>
+  </div>
+  <div class="card">
+    <h3>装备</h3>
+    <div class="eq" id="eq"></div>
+  </div>
+  <div class="card" id="stage">
+    <h3 id="stageTitle">选择前进路线</h3>
+    <div class="path" id="rooms"></div>
+  </div>
+  <div class="card">
+    <h3>战斗日志</h3>
+    <div id="log"></div>
+  </div>
+  <button class="btn" id="restart">重新开始</button>
+</div>
+
+<script>
+const AFFIXES=[
+  {n:"锋利",f:p=>{p.atk+=3}},
+  {n:"坚固",f:p=>{p.def+=3}},
+  {n:"狂暴",f:p=>{p.crit+=10}},
+  {n:"吸血",f:p=>{p.vamp+=8}},
+  {n:"活力",f:p=>{p.maxHp+=20;p.hp+=20}},
+  {n:"荆棘",f:p=>{p.thorn+=3}}
+];
+let P,floor,best=+localStorage.getItem("mist_best")||0,stage="path";
+function rnd(n){return Math.floor(Math.random()*n)}
+function pick(a){return a[rnd(a.length)]}
+function makeItem(slot){
+  const a1=pick(AFFIXES),a2=Math.random()<0.45?pick(AFFIXES.filter(x=>x!==a1)):null;
+  return {slot,name:pick(["青锋","玄铁","寒霜","赤焰","幽影"])+slot,n:a1.n+(a2?("+"+a2.n):""),afx:[a1,...(a2?[a2]:[])]};
+}
+function newRun(){
+  P={hp:100,maxHp:100,atk:10,def:2,crit:5,vamp:0,thorn:0,weapon:makeItem("武器"),armor:makeItem("护甲"),trinket:makeItem("饰品")};
+  floor=1;stage="path";applyStats();render();logTo("— 新的冒险开始 —");
+}
+function applyStats(){
+  P.atk=10;P.def=2;P.crit=5;P.vamp=0;P.thorn=0;P.maxHp=100;
+  [P.weapon,P.armor,P.trinket].forEach(i=>i&&i.afx.forEach(a=>a.f(P)));
+  P.hp=Math.min(P.hp,P.maxHp);
+}
+function roomList(){
+  const rooms=[];
+  const types=["fight","treasure","elite","shop","altar"];
+  shuffle(types);
+  return types.map(t=>({type:t,desc:desc(t)}));
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function desc(t){
+  return t==="fight"?["一群迷雾傀儡","游荡的骷髅","饥饿的狼群"][rnd(3)]:
+    t==="treasure"?"一个布满机关的宝箱":
+    t==="elite"?"精英：迷雾骑士":
+    t==="shop"?"神秘商人":
+    "祭坛：获得随机祝福";
+}
+function enterRoom(r){
+  stage="room";
+  if(r.type==="fight"||r.type==="elite"){
+    battle(r);
+  }else if(r.type==="treasure"){
+    const items=[makeItem(pick(["武器","护甲","饰品"])),makeItem(pick(["武器","护甲","饰品"])),makeItem(pick(["武器","护甲","饰品"]))];
+    logTo("💎 宝箱开启，三选一！");
+    showLoot(items);
+  }else if(r.type==="shop"){
+    const price=15+floor*5;
+    logTo("🏪 商人：花 "+price+" 生命换一件精良装备");
+    if(P.hp>price){
+      showLoot([makeItem(pick(["武器","护甲","饰品"]))],()=>{P.hp-=price;logTo("支付 "+price+" 生命")});
+    }else{logTo("生命不足，商人摇摇头");nextFloor()}
+  }else{
+    const b=pick(AFFIXES);b.f(P);logTo("⛩ 祭坛祝福：【"+b.n+"】");applyStats();nextFloor();
+  }
+}
+function battle(r){
+  const boss=floor%5===0;
+  const e={n:r.type==="elite"?"迷雾骑士":pick(["迷雾傀儡","骷髅","狼群"]),hp:(r.type==="elite"?40:26)+floor*6+(boss?30:0),atk:6+floor*2+(boss?4:0),def:r.type==="elite"?4:2};
+  logTo("⚔ 遭遇【"+e.n+"】生命 "+e.hp+" 攻击 "+e.atk);
+  let rounds=0;
+  const iv=setInterval(()=>{
+    rounds++;
+    if(rounds>80){clearInterval(iv);logTo("…僵持不下，你选择撤退");nextFloor();return}
+    let dmg=Math.max(1,P.atk-e.def+rnd(3));
+    if(rnd(100)<P.crit)dmg*=2,logTo("⚡ 暴击！");
+    e.hp-=dmg;
+    if(P.vamp)P.hp=Math.min(P.maxHp,P.hp+Math.max(1,Math.floor(dmg*P.vamp/100)));
+    if(e.hp<=0){
+      clearInterval(iv);
+      logTo("✅ 击败【"+e.n+"】");
+      if(boss)logTo("👑 Boss 倒下！迷雾散去…");
+      const reward=r.type==="elite"?3:2;
+      if(Math.random()<0.7)showLoot([makeItem(pick(["武器","护甲","饰品"])),makeItem(pick(["武器","护甲","饰品"])),makeItem(pick(["武器","护甲","饰品"]))]);
+      else nextFloor();
+      return;
+    }
+    const ed=Math.max(1,e.atk-P.def+rnd(3));
+    P.hp-=ed;
+    if(P.thorn)e.hp-=P.thorn;
+    if(P.hp<=0){
+      clearInterval(iv);die();return;
+    }
+    render();
+  },400);
+}
+function showLoot(items,onPick){
+  stage="loot";
+  const box=document.getElementById("rooms");
+  box.innerHTML=`<div class="loot">`+items.map((it,i)=>`<div class="item" data-i="${i}"><div style="font-size:22px">⚔</div><b>${it.name}</b><div class="afx" style="color:var(--gold);font-size:11px;margin-top:4px">${it.n}</div></div>`).join("")+`</div>`;
+  box.querySelectorAll(".item").forEach(el=>{
+    el.onclick=()=>{
+      const it=items[+el.dataset.i];
+      if(it.slot==="武器")P.weapon=it;else if(it.slot==="护甲")P.armor=it;else P.trinket=it;
+      if(onPick)onPick();
+      applyStats();logTo("装备了【"+it.name+"】"+it.n);
+      nextFloor();
+    };
+  });
+}
+function nextFloor(){
+  floor++;stage="path";render();
+  logTo("⬇ 深入迷雾，第 "+floor+" 层");
+}
+function die(){
+  stage="dead";
+  logTo("💀 你倒在了迷雾中…");
+  if(floor>best){best=floor;localStorage.setItem("mist_best",best)}
+  render();
+}
+function render(){
+  document.getElementById("best").textContent=best;
+  document.getElementById("floor").textContent=floor;
+  document.getElementById("hp").textContent=Math.max(0,Math.floor(P.hp))+"/"+P.maxHp;
+  document.getElementById("atk").textContent=P.atk;
+  document.getElementById("crit").textContent=P.crit+"%";
+  document.getElementById("vamp").textContent=P.vamp+"%";
+  const eq=document.getElementById("eq");
+  eq.innerHTML=[["武器",P.weapon],["护甲",P.armor],["饰品",P.trinket]].map(([slot,it])=>
+    `<div class="slot"><b>${slot}</b><div style="margin-top:4px">${it.name}</div><div class="afx">${it.n}</div></div>`).join("");
+  const title=document.getElementById("stageTitle");
+  const box=document.getElementById("rooms");
+  if(stage==="path"){
+    title.textContent="第 "+floor+" 层 · 选择前进路线（选 3 个）";
+    const rooms=roomList();
+    box.innerHTML=rooms.map((r,i)=>`<div class="room" data-i="${i}"><div class="ico">${r.type==="fight"?"⚔":r.type==="treasure"?"💎":r.type==="elite"?"👹":r.type==="shop"?"🏪":"⛩"}</div><div class="nm">${r.type==="fight"?"战斗":r.type==="treasure"?"宝箱":r.type==="elite"?"精英":r.type==="shop"?"商店":"祭坛"}</div><div class="ds">${r.desc}</div></div>`).join("");
+    box.querySelectorAll(".room").forEach(el=>el.onclick=()=>enterRoom(rooms[+el.dataset.i]));
+  }else if(stage==="dead"){
+    title.textContent="冒险结束";
+    box.innerHTML=`<div style="text-align:center;color:var(--muted);padding:16px">到达第 ${floor} 层 · 点击下方按钮重新开始</div>`;
+  }else if(stage!=="loot"){
+    title.textContent="…";
+  }
+}
+function logTo(s){const l=document.getElementById("log");l.innerHTML+=`<div>${s}</div>`;l.scrollTop=l.scrollHeight}
+document.getElementById("restart").onclick=newRun;
+newRun();
+</script>
+</body>
+</html>
