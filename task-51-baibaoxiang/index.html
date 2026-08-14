@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百宝箱 · 合成收集</title>
+<style>
+  :root{--bg:#0d0f16;--panel:#151a27;--panel2:#1c2334;--line:#2a3249;--text:#eceef6;--muted:#97a0b8;--gold:#ffc24d;--accent:#9f7cff;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  .wrap{max-width:780px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 14px}
+  header h1{font-size:24px}header h1 span{color:var(--gold)}
+  .bar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .btn{background:var(--gold);color:#2a1d00;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer}
+  .btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+  .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin-bottom:14px}
+  .slot{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;position:relative}
+  .slot .ico{font-size:30px}
+  .slot .nm{font-size:11px;margin-top:4px}
+  .slot .lv{position:absolute;top:4px;right:6px;font-size:10px;color:var(--gold)}
+  .slot button{position:absolute;bottom:4px;right:6px;font-size:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:2px 6px;cursor:pointer}
+  #log{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;font-size:12px;color:var(--muted);line-height:1.8;max-height:160px;overflow-y:auto}
+  #chest{position:fixed;inset:0;background:rgba(8,10,16,.92);display:none;align-items:center;justify-content:center;z-index:9}
+  #chest .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;text-align:center;max-width:440px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>百宝<span>箱</span></h1><div style="font-size:12px;color:var(--muted)">图鉴 <b id="album" style="color:var(--gold)">0/20</b></div></header>
+  <div class="bar">
+    <div>钥匙 <b id="keys" style="color:var(--gold)">3</b> · 星光 <b id="star">0</b></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="open">开宝箱（1 钥匙）</button>
+      <button class="btn ghost" id="daily">每日领钥匙</button>
+      <button class="btn ghost" id="reset">重置</button>
+    </div>
+  </div>
+  <div class="inv" id="inv"></div>
+  <div id="log"><div>欢迎来到百宝箱！开箱收集宝物，同名可合成升级。</div></div>
+</div>
+<div id="chest"><div class="box"><h2 style="color:var(--gold)" id="chestTitle">开箱</h2><div style="font-size:60px;margin:16px 0" id="chestIcon">📦</div><button class="btn" id="chestClose">收下</button></div></div>
+
+<script>
+const TREASURES=[
+  ["铜钱","🪙",1],["玉佩","🪬",1],["古镜","🪞",2],["夜明珠","🟢",2],["金锭","🟨",2],
+  ["珊瑚","🪸",3],["琉璃盏","🏺",3],["龙鳞","🐉",3],["凤羽","🪶",4],["天书","📜",4],
+  ["玉玺","👑",5],["玄珠","🔮",5],["山河图","🗺",5],["昆仑玉","🪨",4],["蓬莱果","🍎",3],
+  ["火灵珠","🔥",4],["冰魄","❄️",4],["雷鼓","🥁",3],["云帆","⛵",2],["星砂","✨",1]
+];
+let inv=[],keys=3,star=0,lastCheck="";
+function save(){localStorage.setItem("bbx_inv",JSON.stringify(inv));localStorage.setItem("bbx_keys",keys);localStorage.setItem("bbx_star",star);localStorage.setItem("bbx_check",lastCheck)}
+function load(){try{inv=JSON.parse(localStorage.getItem("bbx_inv")||"[]");keys=+localStorage.getItem("bbx_keys")||3;star=+localStorage.getItem("bbx_star")||0;lastCheck=localStorage.getItem("bbx_check")||""}catch(e){}}
+function rnd(n){return Math.floor(Math.random()*n)}
+function addT(idx){const slot=inv.find(s=>s.idx===idx);if(slot)slot.count++;else inv.push({idx,count:1})}
+function openChest(){
+  if(keys<=0){log("钥匙不足，先去领钥匙");return}
+  keys--;const idx=weightedIdx();addT(idx);
+  const t=TREASURES[idx];
+  document.getElementById("chestIcon").textContent=t[1];
+  document.getElementById("chestTitle").textContent="获得【"+t[0]+"】";
+  document.getElementById("chest").style.display="flex";
+  log("📦 开出【"+t[0]+"】");
+  save();render();
+}
+function weightedIdx(){
+  const r=Math.random();
+  const tier=r<0.45?1:r<0.75?2:r<0.92?3:r<0.99?4:5;
+  const pool=TREASURES.map((t,i)=>[i,t[2]]).filter(x=>x[1]===tier);
+  return pool[rnd(pool.length)][0];
+}
+function merge(idx){
+  const slot=inv.find(s=>s.idx===idx);
+  if(!slot||slot.count<2)return;
+  const t=TREASURES[idx];
+  const next=TREASURES.findIndex(x=>x[2]===t[2]+1);
+  if(next<0){slot.count--;star+=15;log("✨ 顶级宝物分解为星光 +15");}
+  else{slot.count-=2;addT(next);log("🔀 合成【"+TREASURES[next][0]+"】！");}
+  inv=inv.filter(s=>s.count>0);
+  save();render();
+}
+function render(){
+  document.getElementById("keys").textContent=keys;
+  document.getElementById("star").textContent=star;
+  document.getElementById("album").textContent=inv.filter(s=>s.count>0).length+"/"+TREASURES.length;
+  const box=document.getElementById("inv");box.innerHTML="";
+  const sorted=inv.slice().sort((a,b)=>TREASURES[a.idx][2]-TREASURES[b.idx][2]);
+  sorted.forEach(s=>{
+    const t=TREASURES[s.idx];
+    const d=document.createElement("div");d.className="slot";
+    d.innerHTML=`<div class="lv">${t[2]}阶</div><div class="ico">${t[1]}</div><div class="nm">${t[0]}×${s.count}</div>`;
+    if(s.count>=2){const b=document.createElement("button");b.textContent="合成";b.onclick=()=>merge(s.idx);d.appendChild(b)}
+    box.appendChild(d);
+  });
+  if(!sorted.length)box.innerHTML='<div style="color:var(--muted);grid-column:1/-1;text-align:center;padding:20px">还没有宝物，开个箱子吧</div>';
+}
+function log(s){const e=document.getElementById("log");e.insertAdjacentHTML("afterbegin","<div>"+s+"</div>");while(e.children.length>30)e.removeChild(e.lastChild)}
+document.getElementById("open").onclick=openChest;
+document.getElementById("chestClose").onclick=()=>document.getElementById("chest").style.display="none";
+document.getElementById("daily").onclick=()=>{
+  const today=new Date().toISOString().slice(0,10);
+  if(lastCheck===today){log("今天已经领过了");return}
+  lastCheck=today;keys+=2;log("🔑 每日钥匙 +2");save();render();
+};
+document.getElementById("reset").onclick=()=>{inv=[];keys=3;star=0;save();render();log("已重置")};
+load();render();
+</script>
+</body>
+</html>

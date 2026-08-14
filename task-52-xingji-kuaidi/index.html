@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星际快递</title>
+<style>
+  :root{--bg:#0b0e15;--panel:#131827;--panel2:#1a2133;--line:#29314a;--text:#e9ecf5;--muted:#93a0b8;--gold:#ffc24d;--blue:#6c8cff;--green:#3ddc97;--red:#ff6b81;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  .wrap{max-width:860px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 14px}
+  header h1{font-size:24px;letter-spacing:2px}header h1 span{color:var(--blue)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .stat .l{font-size:11px;color:var(--muted)}.stat .v{font-size:20px;font-weight:800}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  .contracts{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .ct{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .ct .btn{background:var(--green);color:#06231a;border:none;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;margin-top:6px;width:100%}
+  .ships{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+  .sh{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .sh .btn{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}
+  #log{max-height:140px;overflow-y:auto;font-size:12px;color:var(--muted);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>星际<span>快递</span></h1><div style="font-size:12px;color:var(--muted)">声望 <b id="rep" style="color:var(--gold)">0</b> · 已解锁星系 <b id="sys">1</b></div></header>
+  <div class="stats">
+    <div class="stat"><div class="l">信用点</div><div class="v" id="money" style="color:var(--gold)">500</div></div>
+    <div class="stat"><div class="l">燃料</div><div class="v" id="fuel" style="color:var(--blue)">100</div></div>
+    <div class="stat"><div class="l">船队运力</div><div class="v" id="cap" style="color:var(--green)">10</div></div>
+    <div class="stat"><div class="l">已跑订单</div><div class="v" id="orders">0</div></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:10px">货运合同</h3>
+    <div class="contracts" id="contracts"></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:10px">船坞</h3>
+    <div class="ships" id="ships"></div>
+  </div>
+  <div class="card"><h3 style="margin-bottom:8px">航行日志</h3><div id="log"><div>星际快递公司成立。</div></div></div>
+</div>
+<script>
+let S={money:500,fuel:100,cap:10,orders:0,rep:0,ship:0,event:0};
+const SHIPS=[
+  {n:"麻雀号",cap:10,cost:0,fuel:1},
+  {n:"信天翁号",cap:25,cost:800,fuel:2},
+  {n:"猎户座号",cap:60,cost:2500,fuel:4},
+  {n:"银河号",cap:150,cost:8000,fuel:8}
+];
+function rnd(n){return Math.floor(Math.random()*n)}
+function contract(){
+  const tier=Math.min(S.ship+1,4);
+  const pay=(15+rnd(20))*tier,fuel=(8+rnd(8))*tier;
+  return {n:["送药品到第三星","运输矿石到矿区","投递加密邮件","押送物资过跃迁门"][rnd(4)],pay,fuel,need:S.cap};
+}
+function render(){
+  document.getElementById("money").textContent=Math.floor(S.money);
+  document.getElementById("fuel").textContent=Math.floor(S.fuel);
+  document.getElementById("cap").textContent=SHIPS[S.ship].cap;
+  document.getElementById("orders").textContent=S.orders;
+  document.getElementById("rep").textContent=S.rep;
+  document.getElementById("sys").textContent=1+Math.floor(S.rep/100);
+  const cb=document.getElementById("contracts");cb.innerHTML="";
+  for(let i=0;i<3;i++){
+    const c=contract();
+    const d=document.createElement("div");d.className="ct";
+    d.innerHTML=`<b>${c.n}</b><div style="font-size:11px;color:var(--muted);margin:4px 0">报酬 ${c.pay} · 耗油 ${c.fuel}</div><button class="btn">接单</button>`;
+    d.querySelector("button").onclick=()=>{
+      if(S.fuel<c.fuel){log("⚠ 燃料不足");return}
+      S.fuel-=c.fuel;S.money+=c.pay;S.orders++;S.rep+=3;
+      if(rnd(10)<3){S.money-=c.pay*0.4;log("🏴 遭遇海盗，损失 "+Math.floor(c.pay*0.4)+"！")}
+      else log("📦 完成【"+c.n+"】，收入 "+c.pay);
+      render();
+    };
+    cb.appendChild(d);
+  }
+  const sb=document.getElementById("ships");sb.innerHTML="";
+  SHIPS.forEach((sh,i)=>{
+    const d=document.createElement("div");d.className="sh";
+    d.innerHTML=`<div style="font-size:26px">🚀</div><b>${sh.n}</b><div style="font-size:11px;color:var(--muted);margin:4px 0">运力 ${sh.cap} · 耗油 ${sh.fuel}</div>`;
+    const b=document.createElement("button");b.className="btn";
+    if(i===S.ship){b.textContent="当前";b.disabled=true}
+    else{b.textContent="购买 "+sh.cost;b.disabled=S.money<sh.cost}
+    b.onclick=()=>{if(S.money<sh.cost)return;S.money-=sh.cost;S.ship=i;log("🚀 购入【"+sh.n+"】");render()};
+    d.appendChild(b);sb.appendChild(d);
+  });
+}
+function log(s){const e=document.getElementById("log");e.insertAdjacentHTML("afterbegin","<div>"+s+"</div>");while(e.children.length>40)e.removeChild(e.lastChild)}
+setInterval(()=>{
+  S.fuel=Math.min(200,S.fuel+0.5);
+  S.event++;
+  if(S.event%15===0){
+    if(rnd(10)<4){const b=30+rnd(60);S.money+=b;log("🛰 限时大单+政府补贴：+"+b)}
+    else if(rnd(10)<3){log("⚡ 太阳风暴，燃料略有损耗")}
+  }
+  render();
+},1000);
+render();
+</script>
+</body>
+</html>
