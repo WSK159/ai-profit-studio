@@ -11,7 +11,7 @@ import urllib.request
 
 API_URL = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-chat"
-PER_CALL = 3
+PER_CALL = 2
 
 
 def call_deepseek(system, user, max_tokens=8000, temperature=1.0):
