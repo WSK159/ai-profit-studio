@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>符文工坊</title>
+<style>
+  :root{--bg:#0c0f16;--panel:#141926;--panel2:#1b2132;--line:#2a3249;--text:#e9ecf5;--muted:#8f99b1;--gold:#ffc24d;--blue:#6c8cff;--green:#3ddc97;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  .wrap{max-width:840px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 14px}
+  header h1{font-size:24px;letter-spacing:2px}header h1 span{color:var(--gold)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .stat .l{font-size:11px;color:var(--muted)}.stat .v{font-size:20px;font-weight:800}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  .recipes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+  .r{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .r h3{font-size:14px;margin-bottom:4px}
+  .r .cost{font-size:11px;color:var(--muted);min-height:28px}
+  .r .btn{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}
+  .r .btn:disabled{opacity:.4;cursor:not-allowed}
+  .quests{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .q .btn{background:var(--green);color:#06231a;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;margin-top:6px;width:100%}
+  #log{max-height:140px;overflow-y:auto;font-size:12px;color:var(--muted);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>符文<span>工坊</span></h1><div style="font-size:12px;color:var(--muted)">讨伐进度 <b id="boss" style="color:var(--gold)">0/5</b></div></header>
+  <div class="stats">
+    <div class="stat"><div class="l">铁矿石</div><div class="v" id="ore" style="color:var(--muted)">0</div></div>
+    <div class="stat"><div class="l">魔力水晶</div><div class="v" id="crys" style="color:var(--blue)">0</div></div>
+    <div class="stat"><div class="l">金币</div><div class="v" id="coin" style="color:var(--gold)">0</div></div>
+    <div class="stat"><div class="l">冒险者战力</div><div class="v" id="power" style="color:var(--green)">10</div></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:10px">符文炼制</h3>
+    <div class="recipes" id="recipes"></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:10px">冒险者委托</h3>
+    <div class="quests" id="quests"></div>
+  </div>
+  <div class="card"><h3 style="margin-bottom:8px">工坊日志</h3><div id="log"><div>符文工坊开张了。</div></div></div>
+</div>
+<script>
+let S={ore:10,crys:5,coin:20,power:10,boss:0};
+const RECIPES=[
+  {n:"强化符文",ore:5,crys:2,power:3,desc:"+3 战力"},
+  {n:"锋刃符文",ore:8,crys:3,power:5,desc:"+5 战力"},
+  {n:"守护符文",ore:12,crys:6,power:8,desc:"+8 战力"},
+  {n:"龙鳞符文",ore:20,crys:12,power:15,desc:"+15 战力"},
+  {n:"远古符文",ore:35,crys:22,power:25,desc:"+25 战力"}
+];
+const QUESTS=[
+  {n:"讨伐野狼",need:12,reward:30,next:15},
+  {n:"清理矿洞",need:20,reward:50,next:28},
+  {n:"击退石魔",need:35,reward:80,next:45},
+  {n:"净化森林",need:55,reward:120,next:70},
+  {n:"讨伐深渊龙",need:85,reward:200,next:110}
+];
+function fmt(n){return Math.floor(n)}
+function render(){
+  document.getElementById("ore").textContent=fmt(S.ore);
+  document.getElementById("crys").textContent=fmt(S.crys);
+  document.getElementById("coin").textContent=fmt(S.coin);
+  document.getElementById("power").textContent=fmt(S.power);
+  document.getElementById("boss").textContent=S.boss+"/5";
+  const rb=document.getElementById("recipes");rb.innerHTML="";
+  RECIPES.forEach((r,i)=>{
+    const d=document.createElement("div");d.className="r";
+    d.innerHTML=`<h3>${r.n}</h3><div class="cost">${r.ore}矿 ${r.crys}晶<br>${r.desc}</div><button class="btn">炼制</button>`;
+    const b=d.querySelector("button");b.disabled=S.ore<r.ore||S.crys<r.crys;
+    b.onclick=()=>{S.ore-=r.ore;S.crys-=r.crys;S.power+=r.power;log("🔮 炼成【"+r.n+"】，战力 +"+r.power);render()};
+    rb.appendChild(d);
+  });
+  const qb=document.getElementById("quests");qb.innerHTML="";
+  QUESTS.forEach((q,i)=>{
+    const done=S.boss>i;
+    const d=document.createElement("div");d.className="q";
+    d.innerHTML=`<b>${q.n}</b><div style="font-size:11px;color:var(--muted);margin:4px 0">需要战力 ${q.need} · 奖励 ${q.reward} 金${done?" · 已讨伐":""}</div><button class="btn" ${done?"disabled":""}>${done?"✔ 已讨伐":"出征"}</button>`;
+    const b=d.querySelector("button");
+    b.onclick=()=>{
+      if(S.power<q.need){log("⚠ 战力不足，先炼制符文");return}
+      S.power-=Math.floor(q.need*0.3);
+      S.coin+=q.reward;S.boss=i+1;
+      log("⚔ 讨伐【"+q.n+"】成功！金币 +"+q.reward);
+      if(S.boss>=5)log("🏆 五头深渊魔物全部讨伐，工坊威名远扬！");
+      render();
+    };
+    qb.appendChild(d);
+  });
+}
+function log(s){const e=document.getElementById("log");e.insertAdjacentHTML("afterbegin","<div>"+s+"</div>");while(e.children.length>40)e.removeChild(e.lastChild)}
+setInterval(()=>{
+  S.ore+=1.2;S.crys+=0.5;
+  render();
+},1000);
+render();
+</script>
+</body>
+</html>

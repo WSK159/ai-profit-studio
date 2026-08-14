@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深夜直播 · 恐怖互动</title>
+<style>
+  :root{--bg:#0a0c12;--panel:#12151f;--panel2:#191d2b;--line:#282e45;--text:#e6e9f2;--muted:#8b94ab;--red:#ff6b81;--green:#3ddc97;--gold:#ffc24d;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .wrap{width:100%;max-width:620px;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  header h1{font-size:22px;letter-spacing:2px;color:var(--red)}
+  .bars{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .bar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .bar .l{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+  .track{height:8px;background:#221a20;border-radius:99px;overflow:hidden;margin-top:6px}
+  .track i{display:block;height:100%;border-radius:99px;transition:width .3s}
+  #card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px;min-height:260px;display:flex;flex-direction:column;justify-content:space-between}
+  #time{color:var(--muted);font-size:12px;letter-spacing:2px}
+  #txt{font-size:15px;line-height:2;margin:14px 0;color:#d9dce8;white-space:pre-wrap}
+  #choices{display:flex;flex-direction:column;gap:9px}
+  .ch{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 15px;cursor:pointer;font-size:13px;transition:.15s}
+  .ch:hover{border-color:var(--red);transform:translateX(4px)}
+  #chat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.8;max-height:120px;overflow-y:auto}
+  .end{color:var(--gold);font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>深夜直播</h1><div style="font-size:12px;color:var(--muted)">观看人数 <b id="view" style="color:var(--gold)">0</b></div></header>
+  <div class="bars">
+    <div class="bar"><div class="l"><span>热度</span><b id="heatV">0</b></div><div class="track"><i id="heat" style="width:0;background:linear-gradient(90deg,#ffc24d,#ff6b81)"></i></div></div>
+    <div class="bar"><div class="l"><span>理智</span><b id="sanV">100</b></div><div class="track"><i id="san" style="width:100%;background:linear-gradient(90deg,#3ddc97,#6c8cff)"></i></div></div>
+  </div>
+  <div id="card">
+    <div id="time">00:00</div>
+    <div id="txt"></div>
+    <div id="choices"></div>
+  </div>
+  <div id="chat"></div>
+</div>
+<script>
+const NODES={
+  start:{t:"午夜 00:00。你举着手机站在废弃医院门口，直播间 12 人。\n「主播敢进去吗？」弹幕刷过。",ch:[
+    {t:"推开铁门走进去",go:"lobby",heat:10},
+    {t:"先在门口讲 5 分钟故事预热",go:"story",heat:25},
+    {t:"假装设备坏了，收工",go:"exit"}]},
+  story:{t:"你讲起十年前医院大火的故事，弹幕疯涨：观看 3000。\n「讲得真好」「然后呢？！」\n这时，门缝里传来一声很轻的「吱呀」——门自己开了。",ch:[
+    {t:"镜头对准门，走进去",go:"lobby",heat:60},
+    {t:"笑着说'风而已'，继续讲",go:"deny",heat:20},
+    {t:"关掉直播跑路",go:"runaway"}]},
+  deny:{t:"你说服了自己，继续讲故事。\n但弹幕突然全部变成了同一句：「它在看你背后。」\n你缓缓回头——走廊尽头，一道白影。",ch:[
+    {t:"追上去拍个清楚",go:"chase",heat:80},
+    {t:"装作没看见，慢慢后退",go:"back",san:5},
+    {t:"把手机丢下就跑",go:"runaway"}]},
+  lobby:{t:"医院大厅，消毒水味扑面而来。地上有一排脚印，从大门延伸到电梯。\n弹幕：观看 8000。「脚印只有去的，没有回来的。」",ch:[
+    {t:"跟着脚印走",go:"corridor",heat:100},
+    {t:"按电梯上楼",go:"elevator",san:10},
+    {t:"退回门口",go:"back"}]},
+  corridor:{t:"走廊尽头是档案室，门虚掩着。里面有光。\n你把手机伸进去——照见一张桌子，桌上放着一本翻开的病历，你的名字。",ch:[
+    {t:"拿起病历",go:"file",heat:120,san:10},
+    {t:"退出档案室",go:"back",san:10},
+    {t:"对着镜头念病历",go:"file",heat:150}]},
+  file:{t:"病历上写着：患者【你】，入院时间：十年前。死亡时间：十年前。\n你愣住了。弹幕爆炸：观看 10 万。\n「主播快跑！！！」",ch:[
+    {t:"跑！",go:"runaway"},
+    {t:"问它是谁",go:"ask",san:20},
+    {t:"把病历收进包里",go:"keep",heat:200}]},
+  keep:{t:"你把病历收起来。\n身后传来一个声音：「那是我的，还给我。」\n你回头，看见自己站在走廊尽头，穿着病号服，正冲你笑。",ch:[
+    {t:"把病历还给它",go:"return"},
+    {t:"撕掉病历",go:"tear",san:40},
+    {t:"对着它直播",go:"ask",heat:300}]},
+  ask:{t:"「你是谁？」你问。\n它歪着头：「我是十年前没逃出去的那部分。」\n「你现在逃出去了，替我把那部分带出去吧。」\n天亮了。你走出医院，直播 50 万人见证。",end:"结局：爆火 · 替身",heat:999},
+  return:{t:"你把病历放回桌上。\n它接过病历，安静地看着你：「谢谢你。」\n「现在，离开这里，别再回来。」\n你退出医院，天边泛白。直播 20 万人，礼物刷屏。",end:"结局：全身而退",heat:500},
+  tear:{t:"你撕了病历。\n纸屑没有落地，而是飘起来，像雪。\n它笑了：「你把自己的名字撕了。那以后，你就是我的了。」\n理智归零。你成了医院走廊里新的白影。",end:"结局：成为传说",san:-99},
+  elevator:{t:"电梯门开了，里面没有灯。\n你按了 4 楼，电梯却停在了 3 楼半。\n门开了，门外是走廊，走廊尽头是你家的门。",ch:[
+    {t:"走出去，回家",go:"home"},
+    {t:"关上门，继续按 4 楼",go:"floor4",san:15}]},
+  floor4:{t:"4 楼到了。整层楼是停尸间。\n其中一个抽屉，写着你的名字，微微打开着。",ch:[
+    {t:"拉开抽屉",go:"drawer",heat:250,san:20},
+    {t:"退回电梯",go:"back",san:10}]},
+  drawer:{t:"抽屉里是你的直播设备——三年前你在这里直播后失踪的那套。\n弹幕死寂。观看 30 万。\n「主播……你不是三年前就失踪了吗？」",ch:[
+    {t:"关掉直播",go:"offline"},
+    {t:"继续播",go:"ask",heat:400}]},
+  offline:{t:"你关掉直播，走出医院。\n手机显示日期：三年前的同一天。\n你的直播间，从那晚之后再没有开过。",end:"结局：被遗忘的时间"},
+  home:{t:"你推开家门。客厅灯亮着，桌上摆着三年前那天的晚饭，还冒着热气。\n你坐下来，拿起筷子。\n从此，每天晚上 00:00，你都会准时打开直播。",end:"结局：循环"},
+  back:{t:"你退到门口，太阳升起来。\n医院在晨光里安静得像什么都没发生。\n你决定再也不来。可直播间里，那 12 个初始观众，永远都在。",end:"结局：被记住的人"},
+  chase:{t:"你追进走廊，白影消失在档案室。\n你推开门——里面空无一人，只有一台老式电视，屏幕上正在播放你现在的直播画面。\n画面里，你的身后，站着那道白影。",ch:[
+    {t:"回头",go:"turn",san:30},
+    {t:"砸电视",go:"smash"}]},
+  turn:{t:"你回头。什么都没有。\n但弹幕说：「主播，它现在在你左边。」\n你往左看。它的脸，贴在你镜头上。",end:"结局：贴脸杀 · 爆火又疯掉",heat:999,san:-50},
+  smash:{t:"你砸了电视。\n屏幕碎了，但画面还在——碎玻璃里，映出你自己。\n你发现，屏幕里的你，没有跟着你动。",ch:[
+    {t:"跑出医院",go:"runaway"},
+    {t:"捡起玻璃，划破手指确认",go:"confirm",san:20}]},
+  confirm:{t:"血是红的，是真的。\n屏幕里的你笑了：「终于确认了？」\n它从屏幕里伸出手，抓住你的手腕：「现在，换你在里面了。」",end:"结局：镜中人"},
+  runaway:{t:"你冲出医院，身后传来铁门合拢的声音。\n你瘫坐在马路边，直播间 5000 人，全是「恭喜逃生」。\n但你的手机通知栏里，有一条来自三年前的私信：「下次，别开门。」",end:"结局：逃生"},
+  exit:{t:"你收拾设备离开，直播间 12 人陆续退出。\n第二天，你的视频上了热门：《主播半夜直播临阵脱逃》。\n三个月后，你收到一封信，寄件地址是那家废弃医院。",end:"结局：被遗忘"}
+};
+let heat=0,san=100,node="start";
+const $=id=>document.getElementById(id);
+function logChat(msg){const c=$("chat");c.innerHTML+=`<div>${msg}</div>`;c.scrollTop=c.scrollHeight}
+function go(n){
+  node=n;const nd=NODES[n];
+  const time=["00:00","00:30","01:00","01:30","02:00","02:30","03:00","03:30"][Math.min(7,Math.floor(Math.random()*8))];
+  $("time").textContent=time;
+  $("txt").textContent=nd.t;
+  const box=$("choices");box.innerHTML="";
+  if(nd.ch){
+    nd.ch.forEach(ch=>{
+      const b=document.createElement("div");b.className="ch";b.textContent=ch.t;
+      b.onclick=()=>{
+        heat+=ch.heat||0;san+=(ch.san||0);
+        if(ch.heat)logChat("🔥 热度 +"+ch.heat);
+        if(ch.san<0)logChat("😱 理智 -"+(-ch.san));
+        go(ch.go);
+      };
+      box.appendChild(b);
+    });
+  }else if(nd.end){
+    const b=document.createElement("div");b.className="ch end";b.textContent="◆ "+nd.end;
+    box.appendChild(b);
+    logChat("🏁 "+nd.end);
+  }
+  if(nd.heat)heat+=nd.heat;
+  if(nd.san)san+=nd.san;
+  san=Math.max(0,Math.min(100,san));
+  if(san<=0){$("txt").textContent="你的理智归零了。你放下手机，走进走廊深处。直播间从此只剩雪花屏。";$("choices").innerHTML="<div class='ch end'>◆ 结局：疯癫</div>";logChat("📴 直播中断")}
+  render();
+}
+function render(){
+  $("heatV").textContent=Math.floor(heat);
+  $("sanV").textContent=Math.floor(san);
+  $("heat").style.width=Math.min(100,heat/400*100)+"%";
+  $("san").style.width=san+"%";
+  $("view").textContent=Math.floor(12+heat*0.5);
+}
+go("start");
+</script>
+</body>
+</html>
