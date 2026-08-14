@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>深渊回廊 · Roguelike</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141926;--panel2:#1c2334;--line:#283049;--text:#e7eaf3;--muted:#8f99b1;--hp:#ff6b81;--gold:#ffc24d;--blue:#6c8cff;--green:#3ddc97;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+  #app{display:flex;height:100%}
+  #side{width:290px;background:var(--panel);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+  #main{flex:1;display:flex;flex-direction:column;padding:12px}
+  #top{display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px}
+  .stat b{display:block;font-size:18px}
+  #mapWrap{flex:1;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-height:0}
+  canvas{max-width:100%;max-height:100%;image-rendering:pixelated}
+  h2{font-size:15px;color:var(--muted);margin-bottom:6px}
+  #log{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;height:150px;overflow-y:auto;font-size:12px;line-height:1.7;color:var(--muted)}
+  .list{font-size:12px;color:var(--muted);line-height:1.8}
+  .btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+  .btn.green{background:var(--green);color:#06231a}
+  #pad{display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px;margin:10px auto}
+  #pad button{background:var(--panel2);border:1px solid var(--line);color:var(--text);font-size:20px;border-radius:10px}
+  .hpbar{height:8px;background:#221a1e;border-radius:99px;overflow:hidden;margin-top:4px}
+  .hpbar i{display:block;height:100%;background:linear-gradient(90deg,#ff6b81,#ff9aa5);width:100%;transition:width .2s}
+  @media(max-width:760px){#side{width:100%;height:auto;max-height:34vh}#app{flex-direction:column}#pad{display:grid}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <div><h2>深渊回廊</h2>
+      <div class="stat">第 <b id="floor">1</b> 层</div>
+      <div class="stat">历史最好 <b id="best">0</b> 层</div>
+    </div>
+    <div><h2>角色</h2>
+      <div class="stat">生命 <b id="hp">100</b></div>
+      <div class="hpbar"><i id="hpbar"></i></div>
+      <div class="stat" style="margin-top:8px">攻击 <b id="atk">10</b></div>
+      <div class="stat">防御 <b id="def">2</b></div>
+      <div class="stat">金币 <b id="gold" style="color:var(--gold)">0</b></div>
+      <div class="stat">药水 <b id="pot" style="color:var(--green)">2</b></div>
+    </div>
+    <div><h2>遗物</h2><div class="list" id="relics">（无）</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn green" id="restart">重新开始</button>
+      <button class="btn" id="help" style="flex:0 0 44px">?</button>
+    </div>
+  </div>
+  <div id="main">
+    <div id="top">
+      <span id="msg" style="font-size:14px;color:var(--muted)">向深处前进…</span>
+    </div>
+    <div id="mapWrap"><canvas id="cv"></canvas></div>
+    <div id="pad">
+      <span></span><button data-d="0,-1">▲</button><span></span>
+      <button data-d="-1,0">◀</button><button data-d="0,0">H</button><button data-d="1,0">▶</button>
+      <span></span><button data-d="0,1">▼</button><span></span>
+    </div>
+    <div id="log" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const W=48,H=32,T=Math.min(16, Math.floor(Math.min(innerWidth-360, innerHeight-320)/W));
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+cv.width=W*T;cv.height=H*T;
+
+const $=id=>document.getElementById(id);
+let floor=1,player,map,enemies,items,log=[],explored,relics=[],visible=[],gold=0,pots=2,msg="",dead=false;
+const BEST_KEY="abyss_best";
+let best=+localStorage.getItem(BEST_KEY)||0;
+
+function rnd(n){return Math.floor(Math.random()*n)}
+function roll(min,max){return min+Math.floor(Math.random()*(max-min+1))}
+
+const RELICS=[
+  {n:"猩红之刃",d:"攻击+3",f:p=>{p.atk+=3}},
+  {n:"石肤护符",d:"防御+3",f:p=>{p.def+=3}},
+  {n:"巨人之心",d:"生命上限+30",f:p=>{p.maxHp+=30;p.hp+=30}},
+  {n:"吸血獠牙",d:"攻击回复生命",f:p=>{p.vamp=true}},
+  {n:"鹰眼",d:"视野+3",f:p=>{p.sight+=3}},
+  {n:"疾风靴",d:"移动不消耗回合",f:p=>{p.swift=true}},
+  {n:"暴击指环",d:"25%双倍伤害",f:p=>{p.crit=true}},
+  {n:"再生之种",d:"每10步回2血",f:p=>{p.regen=true; p.steps=0}}
+];
+
+function newPlayer(){
+  return {x:0,y:0,hp:100,maxHp:100,atk:10,def:2,sight:8,vamp:false,swift:false,crit:false,regen:false,steps:0};
+}
+
+function makeMap(){
+  map=Array.from({length:H},()=>Array(W).fill("#"));
+  const rooms=[];
+  for(let i=0;i<60;i++){
+    const rw=roll(4,9),rh=roll(3,7),rx=roll(1,W-rw-2),ry=roll(1,H-rh-2);
+    const box={x:rx,y:ry,w:rw,h:rh,cx:rx+rw>>1,cy:ry+rh>>1};
+    if(rooms.some(o=>!(box.x+box.w+1<o.x||o.x+o.w+1<box.x||box.y+box.h+1<o.y||o.y+o.h+1<box.y))){
+      continue;
+    }
+    rooms.push(box);
+    for(let y=ry;y<ry+rh;y++)for(let x=rx;x<rx+rw;x++)map[y][x]=".";
+  }
+  rooms.sort((a,b)=>a.cx-b.cx);
+  for(let i=1;i<rooms.length;i++){
+    const a=rooms[i-1],b=rooms[i];
+    let x=a.cx,y=a.cy;
+    while(x!==b.cx){map[y][x]=".";x+=x<b.cx?1:-1}
+    while(y!==b.cy){map[y][x]=".";y+=y<b.cy?1:-1}
+  }
+  return rooms;
+}
+
+function enemyFor(flr){
+  const types=flr%5===0?[{n:"深渊守卫",g:"BOSS",hp:flr*22,atk:flr*2+6,def:flr,glyph:"👹",boss:true}]:[
+    {n:"软泥怪",hp:roll(12,16)+flr*4,atk:4+flr,def:0,glyph:"🟢"},
+    {n:"洞穴蝙蝠",hp:roll(8,12)+flr*3,atk:5+flr,def:0,glyph:"🦇"},
+    {n:"骷髅兵",hp:roll(16,22)+flr*4,atk:6+flr,def:2+Math.floor(flr/3),glyph:"💀"},
+    {n:"石像鬼",hp:roll(20,28)+flr*5,atk:7+flr,def:5+Math.floor(flr/2),glyph:"🗿"}
+  ];
+  const t=types[rnd(types.length)];
+  return {n:t.n,hp:t.hp,maxHp:t.hp,atk:t.atk,def:t.def,glyph:t.glyph,x:0,y:0,boss:!!t.boss,awake:false};
+}
+
+function place(rooms){
+  const used=new Set();
+  const spot=room=>{
+    let tries=30;
+    while(tries--){
+      const x=room.x+rnd(room.w),y=room.y+rnd(room.h);
+      if(!used.has(x+","+y)){used.add(x+","+y);return{x,y}}
+    }
+    return{x:room.cx,y:room.cy};
+  };
+  const start=spot(rooms[0]);player={...newPlayer(),x:start.x,y:start.y};used.add(start.x+","+start.y);
+  enemies=[];items=[];
+  const bossRoom=rooms[rooms.length-1];
+  for(let i=1;i<rooms.length;i++){
+    const e=enemyFor(floor);const s=spot(rooms[i]);e.x=s.x;e.y=s.y;enemies.push(e);
+    if(floor%5===0&&i===rooms.length-1){
+      e.boss=true;e.n="深渊守卫";e.hp=e.maxHp=floor*22;e.atk=floor*2+6;e.def=floor;e.glyph="👹";
+    }
+  }
+  if(floor%5!==0){
+    const s=spot(bossRoom);items.push({kind:"stair",x:s.x,y:s.y,glyph:"⬇"});
+  }else{
+    const s=spot(bossRoom);items.push({kind:"stair",x:s.x,y:s.y,glyph:"⬇",locked:true});
+  }
+  for(let i=0;i<4+floor;i++){
+    const r=rooms[rnd(rooms.length)];const s=spot(r);
+    const kind=Math.random()<0.5?"gold":(Math.random()<0.5?"pot":"relic");
+    items.push({kind,x:s.x,y:s.y,glyph:kind==="gold"?"💰":kind==="pot"?"🧪":"✨"});
+  }
+  explored=Array.from({length:H},()=>Array(W).fill(false));
+  visible=[];
+  computeVisible();
+  msg=floor%5===0?"Boss 层！击败深渊守卫才能下潜。":"探索地牢，找到楼梯 ⬇ 前往下一层。";
+}
+
+function computeVisible(){
+  visible=[];
+  const p=player,s=p.sight;
+  for(let dy=-s;dy<=s;dy++)for(let dx=-s;dx<=s;dx++){
+    const x=p.x+dx,y=p.y+dy;
+    if(x<0||y<0||x>=W||y>=H)continue;
+    if(dx*dx+dy*dy>s*s)continue;
+    if(hasLOS(p.x,p.y,x,y)){
+      visible.push(x+","+y);
+      explored[y][x]=true;
+    }
+  }
+}
+
+function hasLOS(x0,y0,x1,y1){
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy;
+  let x=x0,y=y0;
+  for(let i=0;i<80;i++){
+    if(x===x1&&y===y1)return true;
+    if(map[y][x]==="#")return false;
+    const e2=2*err;
+    if(e2>-dy){err-=dy;x+=sx}
+    if(e2<dx){err+=dx;y+=sy}
+  }
+  return true;
+}
+
+function enemyAt(x,y){return enemies.find(e=>e.x===x&&e.y===y)}
+function itemAt(x,y){return items.find(i=>i.x===x&&i.y===y)}
+
+function addLog(s){log.push(s);if(log.length>60)log.shift();renderLog()}
+function renderLog(){$("log").innerHTML=log.map(l=>`<div>${l}</div>`).join("")}
+
+function tryMove(dx,dy){
+  if(dead)return;
+  const nx=player.x+dx,ny=player.y+dy;
+  if(nx<0||ny<0||nx>=W||ny>=H)return;
+  if(map[ny][nx]==="#")return;
+  const e=enemyAt(nx,ny);
+  if(e){attackEnemy(e);return}
+  player.x=nx;player.y=ny;
+  const it=itemAt(nx,ny);
+  if(it)pickItem(it);
+  computeVisible();
+  endTurn();
+}
+
+function attackEnemy(e){
+  let dmg=Math.max(1,player.atk-e.def+roll(0,3));
+  if(player.crit&&Math.random()<0.25){dmg*=2;addLog("⚡ 暴击！")}
+  e.hp-=dmg;
+  addLog(`你攻击${e.n}，造成 ${dmg} 伤害`);
+  if(player.vamp){player.hp=Math.min(player.maxHp,player.hp+Math.max(1,Math.floor(dmg/3)));addLog("🩸 吸血回复")}
+  if(e.hp<=0){
+    enemies.splice(enemies.indexOf(e),1);
+    addLog(`☠ ${e.n} 被击败！`);
+    if(e.boss){
+      const st=itemAt(e.x,e.y);if(st)st.locked=false;
+      msg="Boss 已消灭！踏上楼梯 ⬇ 前往下一层。";
+    }
+  }
+  render();
+}
+
+function pickItem(it){
+  items.splice(items.indexOf(it),1);
+  if(it.kind==="gold"){const g=roll(5,15)+floor*2;gold+=g;addLog(`💰 获得金币 ${g}`)}
+  else if(it.kind==="pot"){pots++;addLog("🧪 获得药水")}
+  else if(it.kind==="relic"){
+    const r=RELICS[rnd(RELICS.length)];
+    r.f(player);relics.push(r);
+    addLog(`✨ 获得遗物【${r.n}】${r.d}`);
+  }else if(it.kind==="stair"&&!it.locked){
+    floor++;
+    addLog(`⬇ 下潜到第 ${floor} 层`);
+    const rooms=makeMap();place(rooms);render();return;
+  }
+}
+
+function endTurn(){
+  if(player.regen){player.steps++;if(player.steps%10===0){player.hp=Math.min(player.maxHp,player.hp+2)}}
+  enemies.forEach(e=>{
+    if(e.boss&&e.hp<=0)return;
+    const d=Math.abs(e.x-player.x)+Math.abs(e.y-player.y);
+    if(d<=player.sight&&hasLOS(e.x,e.y,player.x,player.y)){
+      e.awake=true;
+      if(d===1){
+        const dmg=Math.max(1,e.atk-player.def+roll(0,2));
+        player.hp-=dmg;
+        addLog(`${e.n} 攻击你，造成 ${dmg} 伤害`);
+        if(player.hp<=0){player.hp=0;die();return}
+      }else{
+        const dx=Math.sign(player.x-e.x),dy=Math.sign(player.y-e.y);
+        if(Math.abs(dx)>Math.abs(dy)){
+          if(map[e.y][e.x+dx]!=="#"&&!enemyAt(e.x+dx,e.y))e.x+=dx;
+        }else{
+          if(map[e.y+dy][e.x]!=="#"&&!enemyAt(e.x,e.y+dy))e.y+=dy;
+        }
+      }
+    }
+  });
+  computeVisible();render();checkFloor();
+}
+
+function checkFloor(){
+  const st=items.find(i=>i.kind==="stair");
+  if(st&&player.x===st.x&&player.y===st.y&&!st.locked&&!dead){
+    floor++;addLog(`⬇ 下潜到第 ${floor} 层`);
+    const rooms=makeMap();place(rooms);render();
+  }
+}
+
+function die(){
+  dead=true;
+  if(floor>best){best=floor;localStorage.setItem(BEST_KEY,best);$("best").textContent=best}
+  addLog("💀 你倒在了深渊回廊…");
+  msg=`死亡！到达第 ${floor} 层。点击"重新开始"再来一局。`;
+  render();
+}
+
+function render(){
+  $("floor").textContent=floor;
+  $("best").textContent=best;
+  $("hp").textContent=`${player.hp}/${player.maxHp}`;
+  $("hpbar").style.width=Math.max(0,player.hp/player.maxHp*100)+"%";
+  $("atk").textContent=player.atk;
+  $("def").textContent=player.def;
+  $("gold").textContent=gold;
+  $("pot").textContent=pots;
+  $("relics").innerHTML=relics.length?relics.map(r=>`<div>✨${r.n}（${r.d}）</div>`).join(""):"（无）";
+  $("msg").textContent=msg;
+  ctx.fillStyle="#0d1117";ctx.fillRect(0,0,cv.width,cv.height);
+  const vis=new Set(visible);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    if(!explored[y][x])continue;
+    const seen=vis.has(x+","+y);
+    const c=map[y][x];
+    ctx.fillStyle=c==="#"
+      ?(seen?"#3a4260":"#232a42")
+      :(seen?"#12161f":"#0f131b");
+    ctx.fillRect(x*T,y*T,T,T);
+    if(c==="."&&seen)ctx.fillStyle="rgba(255,255,255,.04)";
+    if(!seen)continue;
+    if(c==="."){ctx.fillStyle="rgba(255,255,255,.05)";ctx.fillRect(x*T,y*T,T,T)}
+  }
+  items.forEach(it=>{
+    if(!vis.has(it.x+","+it.y))return;
+    ctx.font=T+"px serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(it.glyph,it.x*T+T/2,it.y*T+T/2);
+    if(it.kind==="stair"){
+      ctx.fillStyle=it.locked?"#ff6b81":"#3ddc97";
+      ctx.font=Math.max(9,T*0.55)+"px sans-serif";
+      ctx.fillText(it.locked?"锁定":"下层",it.x*T+T/2,it.y*T+T-2);
+    }
+  });
+  enemies.forEach(e=>{
+    if(!vis.has(e.x+","+e.y))return;
+    ctx.font=T+"px serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(e.glyph,e.x*T+T/2,e.y*T+T/2);
+    if(e.hp<e.maxHp){
+      ctx.fillStyle="#000";ctx.fillRect(e.x*T+2,e.y*T-2,T-4,3);
+      ctx.fillStyle="#ff6b81";ctx.fillRect(e.x*T+2,e.y*T-2,(T-4)*Math.max(0,e.hp/e.maxHp),3);
+    }
+  });
+  ctx.fillStyle="#3ddc97";ctx.fillRect(player.x*T+3,player.y*T+3,T-6,T-6);
+  ctx.fillStyle="#fff";ctx.font=Math.max(9,T*0.6)+"px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText("勇",player.x*T+T/2,player.y*T+T/2+1);
+  renderLog();
+}
+
+function startGame(){
+  floor=1;gold=0;pots=2;relics=[];log=[];dead=false;
+  player=newPlayer();
+  if(best>=5)player.atk+=2;
+  if(best>=10)player.maxHp+=25,player.hp+=25;
+  if(best>=15)player.def+=2;
+  const rooms=makeMap();place(rooms);render();
+}
+
+document.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  const map={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};
+  if(map[k]){e.preventDefault();tryMove(map[k][0],map[k][1])}
+  else if(k==="h"){usePot()}
+  else if(k==="r"){startGame()}
+});
+
+function usePot(){
+  if(dead)return;
+  if(pots<=0){addLog("没有药水了");return}
+  if(player.hp>=player.maxHp){addLog("生命已满");return}
+  pots--;player.hp=Math.min(player.maxHp,player.hp+40);
+  addLog("🧪 使用药水，恢复 40 生命");
+  computeVisible();render();
+}
+
+document.querySelectorAll("#pad button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    const [dx,dy]=b.dataset.d.split(",").map(Number);
+    if(dx===0&&dy===0)usePot();else tryMove(dx,dy);
+  });
+});
+$("restart").onclick=startGame;
+$("help").onclick=()=>addLog("操作：方向键/WASD 移动与攻击 · H 喝药 · R 重开。击败怪物、捡金币药水遗物，找到 ⬇ 下潜。每5层有Boss！");
+
+startGame();
+</script>
+</body>
+</html>

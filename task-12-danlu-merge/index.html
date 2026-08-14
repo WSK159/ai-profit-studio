@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>丹炉合成</title>
+<style>
+  :root{--bg:#0d0f16;--panel:#161a26;--line:#2a3045;--text:#eceef6;--muted:#97a0b8;--gold:#ffc24d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .wrap{width:100%;max-width:480px;padding:18px;text-align:center}
+  h1{font-size:26px;letter-spacing:2px}
+  h1 span{color:var(--gold)}
+  .bar{display:flex;justify-content:space-between;margin:14px 0;font-size:13px;color:var(--muted)}
+  .bar b{color:var(--text);font-size:16px}
+  #board{background:#10131e;border:1px solid var(--line);border-radius:16px;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;aspect-ratio:1}
+  .cell{background:#1a1f2e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;transition:all .12s;user-select:none}
+  .hint{color:var(--muted);font-size:12px;margin-top:14px;line-height:1.8}
+  .btn{margin-top:12px;background:var(--gold);color:#2a1d00;border:none;border-radius:999px;padding:11px 34px;font-size:15px;font-weight:800;cursor:pointer}
+  .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);background:rgba(20,26,38,.95);border:1px solid var(--line);border-radius:16px;padding:22px 34px;font-size:20px;font-weight:800;opacity:0;pointer-events:none;transition:.25s;z-index:9}
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>丹炉<span>合成</span></h1>
+  <div class="bar">
+    <div>道行 <b id="score">0</b></div>
+    <div>最高 <b id="best">0</b></div>
+    <div>最高丹品 <b id="topTier">—</b></div>
+  </div>
+  <div id="board"></div>
+  <button class="btn" id="new">重开一炉</button>
+  <div class="hint">方向键 / WASD / 滑动 移动丹药 · 同阶相撞自动进阶<br>灵草→丹砂→灵丹→宝丹→玄丹→仙丹→九转金丹</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const NAMES=["","灵草","丹砂","灵丹","宝丹","玄丹","地丹","天丹","仙丹","太清丹","九转金丹"];
+const COLORS=["#1a1f2e","#7fd88f","#5fc7e8","#8f9bff","#c084fc","#f472b6","#ff9f68","#ffd166","#ff6b81","#ffc24d","#ffe9a3"];
+const SIZES=[0,15,17,19,20,21,22,23,24,25,26];
+let grid=Array(16).fill(0),score=0,best=+localStorage.getItem("danlu_best")||0,topTier=+localStorage.getItem("danlu_tier")||0,over=false;
+const board=document.getElementById("board");
+
+function idx(x,y){return y*4+x}
+function rndCell(){
+  const empty=[];
+  for(let i=0;i<16;i++)if(!grid[i])empty.push(i);
+  if(empty.length){grid[empty[Math.floor(Math.random()*empty.length)]]=Math.random()<0.85?1:2}
+}
+function move(dir){
+  if(over)return;
+  const seq=[0,1,2,3];
+  if(dir==="left"||dir==="right")for(let y=0;y<4;y++){
+    let arr=[];
+    for(let x=0;x<4;x++)arr.push(grid[idx(x,y)]);
+    if(dir==="right")arr.reverse();
+    const res=slide(arr);
+    if(dir==="right")res.reverse();
+    for(let x=0;x<4;x++)grid[idx(x,y)]=res[x];
+  }else for(let x=0;x<4;x++){
+    let arr=[];
+    for(let y=0;y<4;y++)arr.push(grid[idx(x,y)]);
+    if(dir==="down")arr.reverse();
+    const res=slide(arr);
+    if(dir==="down")res.reverse();
+    for(let y=0;y<4;y++)grid[idx(x,y)]=res[y];
+  }
+  rndCell();render();check();
+}
+function slide(arr){
+  const nz=arr.filter(v=>v!==0),out=[];
+  for(let i=0;i<nz.length;i++){
+    if(nz[i]===nz[i+1]){out.push(nz[i]+1);score+=(1<<(nz[i]+1));i++}
+    else out.push(nz[i]);
+  }
+  while(out.length<4)out.push(0);
+  return out;
+}
+function canMove(){
+  for(let i=0;i<16;i++){
+    if(!grid[i])return true;
+    const x=i%4,y=Math.floor(i/4);
+    if(x<3&&grid[i]===grid[i+1])return true;
+    if(y<3&&grid[i]===grid[i+4])return true;
+  }
+  return false;
+}
+function check(){
+  const max=Math.max(...grid);
+  if(max>topTier){topTier=max;localStorage.setItem("danlu_tier",topTier);toast("炼出「"+NAMES[max]+"」！")}
+  if(!canMove()){
+    over=true;toast("炉火已熄…点「重开一炉」再来");
+  }
+  if(score>best){best=score;localStorage.setItem("danlu_best",best)}
+  document.getElementById("best").textContent=best;
+  document.getElementById("topTier").textContent=NAMES[topTier];
+}
+function render(){
+  document.getElementById("score").textContent=score;
+  board.innerHTML="";
+  grid.forEach(v=>{
+    const c=document.createElement("div");
+    c.className="cell";
+    c.style.background=COLORS[v]||COLORS[0];
+    c.style.color=v>4?"#fff":"#111";
+    c.style.fontSize=(SIZES[v]||0)+"px";
+    c.textContent=v?NAMES[v]:"";
+    board.appendChild(c);
+  });
+}
+function reset(){grid=Array(16).fill(0);score=0;over=false;rndCell();rndCell();render();document.getElementById("score").textContent=0}
+function toast(s){const t=document.getElementById("toast");t.textContent=s;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1400)}
+document.getElementById("new").onclick=reset;
+document.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  const m={arrowleft:"left",a:"left",arrowright:"right",d:"right",arrowup:"up",w:"up",arrowdown:"down",s:"down"};
+  if(m[k]){e.preventDefault();move(m[k])}
+});
+let sx=0,sy=0;
+document.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+document.addEventListener("touchend",e=>{
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)<24&&Math.abs(dy)<24)return;
+  move(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));
+},{passive:true});
+reset();
+</script>
+</body>
+</html>
