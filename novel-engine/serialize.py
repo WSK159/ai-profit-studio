@@ -190,6 +190,7 @@ def main():
     novel_dir = args.novel
     if not os.path.isdir(novel_dir):
         raise SystemExit("找不到小说目录：" + novel_dir)
+    os.makedirs(os.path.join(novel_dir, "chapters"), exist_ok=True)
     state = load_state(novel_dir)
     chapters_dir = os.path.join(novel_dir, "chapters")
     if not state.get("next") and os.path.isdir(chapters_dir):
