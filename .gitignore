@@ -1,0 +1,20 @@
+# secrets
+.env
+*.token
+secrets/
+
+# python
+__pycache__/
+.venv/
+venv/
+
+# node
+node_modules/
+
+# os
+Thumbs.db
+.DS_Store
+
+# local artifacts
+*.log
+tmp/
