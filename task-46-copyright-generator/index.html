@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>素材版权声明生成器</title>
+<style>
+  :root{--bg:#0d0f16;--panel:#161a26;--panel2:#1e2334;--line:#2b3249;--text:#eceef6;--muted:#97a0b8;--accent:#6c8cff;--r:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  .wrap{max-width:720px;margin:0 auto;padding:20px}
+  header{text-align:center;padding:12px 0 18px}
+  header h1{font-size:24px}header h1 b{color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px;font-size:14px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px}
+  .btn.ghost{background:var(--panel2);border:1px solid var(--line)}
+  #out{white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;line-height:1.9;min-height:140px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>素材版权<b>声明生成器</b></h1></header>
+  <div class="card">
+    <label>素材类型</label>
+    <select id="type">
+      <option value="image">图片</option><option value="video">视频</option>
+      <option value="audio">音频</option><option value="text">文案/文章</option>
+      <option value="ai">AI 生成内容</option><option value="code">代码</option>
+    </select>
+    <label>素材名称/标题</label>
+    <input type="text" id="name" value="《示例素材》">
+    <label>创作者/权利方</label>
+    <input type="text" id="owner" value="AI Profit Studio">
+    <label>来源</label>
+    <select id="source">
+      <option value="self">原创（本人制作）</option>
+      <option value="purchase">付费购买</option>
+      <option value="free">免费授权库（如 Pixabay）</option>
+      <option value="ai">AI 生成（需注明工具）</option>
+    </select>
+    <label>授权范围</label>
+    <select id="scope">
+      <option value="commercial">允许商用（含修改与再分发）</option>
+      <option value="noncommercial">仅限非商用</option>
+      <option value="credit">需署名后商用</option>
+      <option value="all_rights">保留所有权利</option>
+    </select>
+    <label>附加说明（可选）</label>
+    <textarea id="note" placeholder="例如：禁止用于虚假宣传、禁止二次售卖…"></textarea>
+    <div class="row">
+      <button class="btn" id="gen">生成中文声明</button>
+      <button class="btn ghost" id="genEn">Generate English</button>
+      <button class="btn ghost" id="copy">复制</button>
+    </div>
+  </div>
+  <div class="card"><label>声明文本</label><div id="out">（选择选项后点击生成）</div></div>
+</div>
+<script>
+const TYPES={image:"图片素材",video:"视频素材",audio:"音频素材",text:"文案/文章",ai:"AI 生成内容",code:"代码"};
+const SOURCES={self:"原创",purchase:"付费购买",free:"免费授权库",ai:"AI 生成"};
+const SCOPES={commercial:"允许商用（含修改与再分发）",noncommercial:"仅限非商用",credit:"需署名后商用",all_rights:"保留所有权利"};
+function gen(lang){
+  const type=TYPES[document.getElementById("type").value];
+  const name=document.getElementById("name").value;
+  const owner=document.getElementById("owner").value;
+  const src=SOURCES[document.getElementById("source").value];
+  const scope=SCOPES[document.getElementById("scope").value];
+  const note=document.getElementById("note").value.trim();
+  const d=new Date().toISOString().slice(0,10);
+  if(lang==="zh"){
+    return `【版权声明】\n\n本${type}《${name}》由 ${owner} 创作/持有。\n\n来源：${src}\n授权范围：${scope}\n声明日期：${d}\n\n任何使用均须遵守上述授权范围。${note?("附加约定："+note):""}\n未经权利人书面许可，不得超出上述范围使用、复制或分发。`;
+  }
+  return `COPYRIGHT NOTICE\n\nThis ${type} "${name}" is created/owned by ${owner}.\n\nSource: ${src}\nLicense scope: ${scope}\nDate: ${d}\n\nAny use must comply with the license scope above.${note?(" Additional terms: "+note):""}\nAny use, reproduction, or distribution beyond the stated scope requires prior written permission from the rights holder.`;
+}
+document.getElementById("gen").onclick=()=>document.getElementById("out").textContent=gen("zh");
+document.getElementById("genEn").onclick=()=>document.getElementById("out").textContent=gen("en");
+document.getElementById("copy").onclick=()=>navigator.clipboard.writeText(document.getElementById("out").textContent).then(()=>alert("已复制"));
+</script>
+</body>
+</html>
