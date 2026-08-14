@@ -18,3 +18,4 @@ Thumbs.db
 # local artifacts
 *.log
 tmp/
+_raw_debug.txt

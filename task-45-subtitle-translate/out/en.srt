@@ -1,0 +1,12 @@
+1
+00:00:01,000 --> 00:00:05,000
+Hello everyone, welcome to this video.
+
+2
+00:00:05,500 --> 00:00:10,000
+Today I'll teach you how to use AI for a side hustle.
+
+3
+00:00:10,500 --> 00:00:15,000
+Step one: pick something you'd be willing to do a thousand times.
+
