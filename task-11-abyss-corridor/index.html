@@ -2,162 +2,180 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>深渊回廊 · Roguelike</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深渊回廊 · 肉鸽地牢</title>
 <style>
-  :root{--bg:#0b0e14;--panel:#141926;--panel2:#1c2334;--line:#283049;--text:#e7eaf3;--muted:#8f99b1;--hp:#ff6b81;--gold:#ffc24d;--blue:#6c8cff;--green:#3ddc97;--r:14px}
+  :root{--bg:#0b0e15;--panel:#131827;--panel2:#1a2133;--line:#29314a;--text:#e9ecf5;--muted:#93a0b8;--red:#ff6b81;--green:#3ddc97;--blue:#6c8cff;--gold:#ffc24d;--purple:#c084fc;--r:14px}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
   #app{display:flex;height:100%}
-  #side{width:290px;background:var(--panel);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
-  #main{flex:1;display:flex;flex-direction:column;padding:12px}
-  #top{display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px}
-  .stat b{display:block;font-size:18px}
+  #side{width:280px;background:var(--panel);border-right:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+  #main{flex:1;display:flex;flex-direction:column;padding:10px}
+  #top{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:12px}
+  .stat b{display:block;font-size:17px}
   #mapWrap{flex:1;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-height:0}
   canvas{max-width:100%;max-height:100%;image-rendering:pixelated}
-  h2{font-size:15px;color:var(--muted);margin-bottom:6px}
-  #log{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;height:150px;overflow-y:auto;font-size:12px;line-height:1.7;color:var(--muted)}
-  .list{font-size:12px;color:var(--muted);line-height:1.8}
-  .btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+  h3{font-size:13px;color:var(--muted);margin-bottom:4px}
+  #log{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 9px;height:120px;overflow-y:auto;font-size:11px;line-height:1.6;color:var(--muted)}
+  .btn{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;width:100%}
   .btn.green{background:var(--green);color:#06231a}
-  #pad{display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px;margin:10px auto}
-  #pad button{background:var(--panel2);border:1px solid var(--line);color:var(--text);font-size:20px;border-radius:10px}
-  .hpbar{height:8px;background:#221a1e;border-radius:99px;overflow:hidden;margin-top:4px}
-  .hpbar i{display:block;height:100%;background:linear-gradient(90deg,#ff6b81,#ff9aa5);width:100%;transition:width .2s}
-  @media(max-width:760px){#side{width:100%;height:auto;max-height:34vh}#app{flex-direction:column}#pad{display:grid}}
+  .overlay{position:fixed;inset:0;background:rgba(8,10,16,.94);display:flex;align-items:center;justify-content:center;z-index:9;overflow-y:auto}
+  .overlay .box{max-width:760px;width:100%;padding:20px;text-align:center}
+  .overlay h2{font-size:22px;color:var(--gold);margin-bottom:14px}
+  .chars{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .ch{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;transition:.15s}
+  .ch:hover{border-color:var(--purple);transform:translateY(-3px)}
+  .ch .ico{font-size:32px}.ch h4{font-size:16px;margin:6px 0 4px}
+  .ch .ps{font-size:12px;color:var(--green);margin-bottom:4px}
+  .ch .ds{font-size:11px;color:var(--muted);line-height:1.6}
+  .shopgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .sitem{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+  .sitem:hover{border-color:var(--gold)}
+  .sitem b{font-size:14px}.sitem .pr{color:var(--gold);font-size:12px;margin-top:4px}
+  #pad{display:none;grid-template-columns:repeat(3,50px);grid-template-rows:repeat(3,50px);gap:6px;margin:8px auto}
+  #pad button{background:var(--panel2);border:1px solid var(--line);color:var(--text);font-size:18px;border-radius:10px}
+  @media(max-width:760px){#side{width:100%;max-height:32vh}#app{flex-direction:column}#pad{display:grid}}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="side">
-    <div><h2>深渊回廊</h2>
-      <div class="stat">第 <b id="floor">1</b> 层</div>
-      <div class="stat">历史最好 <b id="best">0</b> 层</div>
+    <div><h3>深渊回廊</h3>
+      <div class="stat">第 <b id="floor">1</b> 层 · 历史最佳 <b id="best">0</b></div>
     </div>
-    <div><h2>角色</h2>
+    <div><h3 id="cname">角色</h3>
       <div class="stat">生命 <b id="hp">100</b></div>
-      <div class="hpbar"><i id="hpbar"></i></div>
-      <div class="stat" style="margin-top:8px">攻击 <b id="atk">10</b></div>
-      <div class="stat">防御 <b id="def">2</b></div>
-      <div class="stat">金币 <b id="gold" style="color:var(--gold)">0</b></div>
-      <div class="stat">药水 <b id="pot" style="color:var(--green)">2</b></div>
+      <div class="stat" style="margin-top:6px">攻击 <b id="atk">10</b> · 防御 <b id="def">2</b></div>
+      <div class="stat" style="margin-top:6px">金币 <b id="gold" style="color:var(--gold)">0</b></div>
+      <div class="stat" style="margin-top:6px">药水 <b id="pot" style="color:var(--green)">2</b></div>
     </div>
-    <div><h2>遗物</h2><div class="list" id="relics">（无）</div></div>
+    <div><h3>遗物</h3><div id="relics" style="font-size:11px;color:var(--gold);line-height:1.8">（无）</div></div>
     <div style="display:flex;gap:8px">
       <button class="btn green" id="restart">重新开始</button>
-      <button class="btn" id="help" style="flex:0 0 44px">?</button>
+      <button class="btn" id="shopBtn" style="flex:0 0 46px">购</button>
     </div>
+    <div style="font-size:10px;color:var(--muted)">方向键/WASD 移动攻击 · H 喝药 · B 商店（靠近商人时）</div>
   </div>
   <div id="main">
-    <div id="top">
-      <span id="msg" style="font-size:14px;color:var(--muted)">向深处前进…</span>
-    </div>
+    <div id="top"><span id="msg" style="font-size:13px;color:var(--muted)"></span></div>
     <div id="mapWrap"><canvas id="cv"></canvas></div>
     <div id="pad">
       <span></span><button data-d="0,-1">▲</button><span></span>
       <button data-d="-1,0">◀</button><button data-d="0,0">H</button><button data-d="1,0">▶</button>
       <span></span><button data-d="0,1">▼</button><span></span>
     </div>
-    <div id="log" style="margin-top:10px"></div>
+    <div id="log" style="margin-top:8px"></div>
   </div>
 </div>
+<div class="overlay" id="select"><div class="box"><h2>选择你的职业</h2><div class="chars" id="chars"></div></div></div>
+<div class="overlay" id="shop" style="display:none"><div class="box"><h2>深渊商人</h2><div class="shopgrid" id="shopGrid"></div><button class="btn" id="shopClose" style="margin-top:14px;max-width:200px">离开</button></div></div>
 
 <script>
 "use strict";
-const W=48,H=32,T=Math.min(16, Math.floor(Math.min(innerWidth-360, innerHeight-320)/W));
+const CLASSES=[
+  {id:"sword",name:"剑修·青锋",ico:"⚔️",hp:90,atk:12,def:2,sight:8,ps:"剑意：15% 暴击双倍伤害",ds:"输出高，暴击致胜",start:()=>player.crit=15},
+  {id:"alch",name:"丹师·药仙",ico:"⚗️",hp:115,atk:8,def:3,sight:8,ps:"回春：每 9 步恢复 3 生命",ds:"皮厚耐打，续航拉满",start:()=>player.regen=3},
+  {id:"ranger",name:"游侠·逐风",ico:"🏹",hp:82,atk:11,def:1,sight:12,ps:"鹰眼：视野+4，击杀得金币+2",ds:"先手压制，视野辽阔",start:()=>player.sight+=4}
+];
+const W=48,H=32,T=Math.min(16,Math.floor(Math.min(innerWidth-330,innerHeight-320)/W));
 const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
 cv.width=W*T;cv.height=H*T;
-
 const $=id=>document.getElementById(id);
-let floor=1,player,map,enemies,items,log=[],explored,relics=[],visible=[],gold=0,pots=2,msg="",dead=false;
+let floor=1,player,map,enemies,items,logs=[],explored,relics=[],visible=[],gold=0,pots=2,msg="",dead=false,merchant=null;
 const BEST_KEY="abyss_best";
 let best=+localStorage.getItem(BEST_KEY)||0;
-
 function rnd(n){return Math.floor(Math.random()*n)}
-function roll(min,max){return min+Math.floor(Math.random()*(max-min+1))}
+function roll(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
 
 const RELICS=[
-  {n:"猩红之刃",d:"攻击+3",f:p=>{p.atk+=3}},
-  {n:"石肤护符",d:"防御+3",f:p=>{p.def+=3}},
+  {n:"猩红之刃",d:"攻击+3",f:p=>p.atk+=3},
+  {n:"石肤护符",d:"防御+3",f:p=>p.def+=3},
   {n:"巨人之心",d:"生命上限+30",f:p=>{p.maxHp+=30;p.hp+=30}},
-  {n:"吸血獠牙",d:"攻击回复生命",f:p=>{p.vamp=true}},
-  {n:"鹰眼",d:"视野+3",f:p=>{p.sight+=3}},
-  {n:"疾风靴",d:"移动不消耗回合",f:p=>{p.swift=true}},
-  {n:"暴击指环",d:"25%双倍伤害",f:p=>{p.crit=true}},
-  {n:"再生之种",d:"每10步回2血",f:p=>{p.regen=true; p.steps=0}}
+  {n:"吸血獠牙",d:"攻击回复生命",f:p=>p.vamp=true},
+  {n:"鹰眼",d:"视野+3",f:p=>p.sight+=3},
+  {n:"疾风靴",d:"10% 概率移动不耗回合",f:p=>p.swift=10},
+  {n:"暴击指环",d:"暴击率+20%",f:p=>p.crit=(p.crit||0)+20},
+  {n:"再生之种",d:"每 9 步回 3 血",f:p=>p.regen=3},
+  {n:"贪财符",d:"击杀金币+3",f:p=>p.looty=3},
+  {n:"龙鳞甲",d:"受击减伤 2",f:p=>p.thorns=2},
+  {n:"灵犀珠",d:"药水回复翻倍",f:p=>p.potx2=true},
+  {n:"磐石",d:"防御+2",f:p=>p.def+=2}
 ];
 
-function newPlayer(){
-  return {x:0,y:0,hp:100,maxHp:100,atk:10,def:2,sight:8,vamp:false,swift:false,crit:false,regen:false,steps:0};
+function newPlayer(cid){
+  const c=CLASSES.find(x=>x.id===cid);
+  player={cid,hp:c.hp,maxHp:c.hp,atk:c.atk,def:c.def,sight:c.sight,crit:0,vamp:false,swift:0,regen:0,steps:0,looty:0,thorns:0,potx2:false,stone:0,x:0,y:0};
+  c.start();
+  $("cname").textContent=c.name+" · "+c.ps;
+  document.getElementById("select").style.display="none";
 }
 
 function makeMap(){
   map=Array.from({length:H},()=>Array(W).fill("#"));
   const rooms=[];
-  for(let i=0;i<60;i++){
+  for(let i=0;i<70;i++){
     const rw=roll(4,9),rh=roll(3,7),rx=roll(1,W-rw-2),ry=roll(1,H-rh-2);
-    const box={x:rx,y:ry,w:rw,h:rh,cx:rx+rw>>1,cy:ry+rh>>1};
-    if(rooms.some(o=>!(box.x+box.w+1<o.x||o.x+o.w+1<box.x||box.y+box.h+1<o.y||o.y+o.h+1<box.y))){
-      continue;
-    }
+    const box={x:rx,y:ry,w:rw,h:rh,cx:rx+(rw>>1),cy:ry+(rh>>1)};
+    if(rooms.some(o=>!(box.x+box.w+1<o.x||o.x+o.w+1<box.x||box.y+box.h+1<o.y||o.y+o.h+1<box.y)))continue;
     rooms.push(box);
     for(let y=ry;y<ry+rh;y++)for(let x=rx;x<rx+rw;x++)map[y][x]=".";
   }
   rooms.sort((a,b)=>a.cx-b.cx);
   for(let i=1;i<rooms.length;i++){
-    const a=rooms[i-1],b=rooms[i];
-    let x=a.cx,y=a.cy;
+    const a=rooms[i-1],b=rooms[i];let x=a.cx,y=a.cy;
     while(x!==b.cx){map[y][x]=".";x+=x<b.cx?1:-1}
     while(y!==b.cy){map[y][x]=".";y+=y<b.cy?1:-1}
   }
   return rooms;
 }
 
-function enemyFor(flr){
-  const types=flr%5===0?[{n:"深渊守卫",g:"BOSS",hp:flr*22,atk:flr*2+6,def:flr,glyph:"👹",boss:true}]:[
-    {n:"软泥怪",hp:roll(12,16)+flr*4,atk:4+flr,def:0,glyph:"🟢"},
-    {n:"洞穴蝙蝠",hp:roll(8,12)+flr*3,atk:5+flr,def:0,glyph:"🦇"},
-    {n:"骷髅兵",hp:roll(16,22)+flr*4,atk:6+flr,def:2+Math.floor(flr/3),glyph:"💀"},
-    {n:"石像鬼",hp:roll(20,28)+flr*5,atk:7+flr,def:5+Math.floor(flr/2),glyph:"🗿"}
-  ];
-  const t=types[rnd(types.length)];
-  return {n:t.n,hp:t.hp,maxHp:t.hp,atk:t.atk,def:t.def,glyph:t.glyph,x:0,y:0,boss:!!t.boss,awake:false};
-}
-
 function place(rooms){
   const used=new Set();
-  const spot=room=>{
-    let tries=30;
-    while(tries--){
-      const x=room.x+rnd(room.w),y=room.y+rnd(room.h);
-      if(!used.has(x+","+y)){used.add(x+","+y);return{x,y}}
-    }
-    return{x:room.cx,y:room.cy};
-  };
-  const start=spot(rooms[0]);player={...newPlayer(),x:start.x,y:start.y};used.add(start.x+","+start.y);
-  enemies=[];items=[];
+  const spot=room=>{for(let i=0;i<40;i++){const x=room.x+rnd(room.w),y=room.y+rnd(room.h);if(!used.has(x+","+y)){used.add(x+","+y);return{x,y}}}return{x:room.cx,y:room.cy}};
+  const s0=spot(rooms[0]);player.x=s0.x;player.y=s0.y;used.add(s0.x+","+s0.y);
+  enemies=[];items=[];merchant=null;
   const bossRoom=rooms[rooms.length-1];
   for(let i=1;i<rooms.length;i++){
-    const e=enemyFor(floor);const s=spot(rooms[i]);e.x=s.x;e.y=s.y;enemies.push(e);
-    if(floor%5===0&&i===rooms.length-1){
-      e.boss=true;e.n="深渊守卫";e.hp=e.maxHp=floor*22;e.atk=floor*2+6;e.def=floor;e.glyph="👹";
-    }
+    const s=spot(rooms[i]);
+    const isLast=i===rooms.length-1;
+    const isElite=!isLast&&Math.random()<0.22;
+    const e=enemyFor(isElite,isLast);
+    e.x=s.x;e.y=s.y;enemies.push(e);
+    e.maxHp=e.hp;
   }
   if(floor%5!==0){
     const s=spot(bossRoom);items.push({kind:"stair",x:s.x,y:s.y,glyph:"⬇"});
   }else{
     const s=spot(bossRoom);items.push({kind:"stair",x:s.x,y:s.y,glyph:"⬇",locked:true});
   }
-  for(let i=0;i<4+floor;i++){
+  if(floor>1&&Math.random()<0.35&&floor%5!==0){
+    const r=rooms[rnd(rooms.length)];
+    if(r!==rooms[0]){const s=spot(r);merchant={x:s.x,y:s.y}}
+  }
+  for(let i=0;i<5+floor;i++){
     const r=rooms[rnd(rooms.length)];const s=spot(r);
     const kind=Math.random()<0.5?"gold":(Math.random()<0.5?"pot":"relic");
     items.push({kind,x:s.x,y:s.y,glyph:kind==="gold"?"💰":kind==="pot"?"🧪":"✨"});
   }
   explored=Array.from({length:H},()=>Array(W).fill(false));
-  visible=[];
+  if(player.stone)player.armor=(player.armor||0)+player.stone;
   computeVisible();
-  msg=floor%5===0?"Boss 层！击败深渊守卫才能下潜。":"探索地牢，找到楼梯 ⬇ 前往下一层。";
+  msg=floor%5===0?"Boss 层！击败深渊守卫才能下潜。":"探索地牢，找到楼梯 ⬇ 前往下一层"+(merchant?"（靠近商人按 B 购物）":"");
+}
+
+function enemyFor(elite,boss){
+  if(boss)return {n:"深渊守卫",hp:floor*22,atk:floor*2+6,def:floor,glyph:"👹",boss:true,elite:false,gold:50};
+  if(elite)return {n:"深渊骑士",hp:floor*13+24,atk:floor*2+5,def:3+Math.floor(floor/3),glyph:"🗡️",elite:true,boss:false,gold:25+floor*2};
+  const types=[
+    {n:"软泥怪",hp:roll(12,16)+floor*4,atk:4+floor,def:0,glyph:"🟢"},
+    {n:"洞穴蝙蝠",hp:roll(8,12)+floor*3,atk:5+floor,def:0,glyph:"🦇"},
+    {n:"骷髅兵",hp:roll(16,22)+floor*4,atk:6+floor,def:2+Math.floor(floor/3),glyph:"💀"},
+    {n:"石像鬼",hp:roll(20,28)+floor*5,atk:7+floor,def:5+Math.floor(floor/2),glyph:"🗿"}
+  ];
+  const t=types[rnd(types.length)];
+  return {n:t.n,hp:t.hp,atk:t.atk,def:t.def,glyph:t.glyph,boss:false,elite:false,gold:5+floor*2};
 }
 
 function computeVisible(){
@@ -167,17 +185,12 @@ function computeVisible(){
     const x=p.x+dx,y=p.y+dy;
     if(x<0||y<0||x>=W||y>=H)continue;
     if(dx*dx+dy*dy>s*s)continue;
-    if(hasLOS(p.x,p.y,x,y)){
-      visible.push(x+","+y);
-      explored[y][x]=true;
-    }
+    if(hasLOS(p.x,p.y,x,y)){visible.push(x+","+y);explored[y][x]=true}
   }
 }
-
 function hasLOS(x0,y0,x1,y1){
-  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy;
-  let x=x0,y=y0;
-  for(let i=0;i<80;i++){
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy,x=x0,y=y0;
+  for(let i=0;i<90;i++){
     if(x===x1&&y===y1)return true;
     if(map[y][x]==="#")return false;
     const e2=2*err;
@@ -186,12 +199,11 @@ function hasLOS(x0,y0,x1,y1){
   }
   return true;
 }
-
 function enemyAt(x,y){return enemies.find(e=>e.x===x&&e.y===y)}
 function itemAt(x,y){return items.find(i=>i.x===x&&i.y===y)}
-
-function addLog(s){log.push(s);if(log.length>60)log.shift();renderLog()}
-function renderLog(){$("log").innerHTML=log.map(l=>`<div>${l}</div>`).join("")}
+function nearMerchant(){return merchant&&Math.abs(player.x-merchant.x)+Math.abs(player.y-merchant.y)<=1}
+function addLog(s){logs.push(s);if(logs.length>60)logs.shift();renderLog()}
+function renderLog(){$("log").innerHTML=logs.map(l=>`<div>${l}</div>`).join("")}
 
 function tryMove(dx,dy){
   if(dead)return;
@@ -204,24 +216,35 @@ function tryMove(dx,dy){
   const it=itemAt(nx,ny);
   if(it)pickItem(it);
   computeVisible();
-  endTurn();
+  if(player.swift&&rnd(100)<player.swift){}
+  else endTurn();
 }
 
 function attackEnemy(e){
   let dmg=Math.max(1,player.atk-e.def+roll(0,3));
-  if(player.crit&&Math.random()<0.25){dmg*=2;addLog("⚡ 暴击！")}
+  if((player.crit||0)>0&&rnd(100)<player.crit){dmg*=2;addLog("⚡ 暴击！")}
   e.hp-=dmg;
   addLog(`你攻击${e.n}，造成 ${dmg} 伤害`);
-  if(player.vamp){player.hp=Math.min(player.maxHp,player.hp+Math.max(1,Math.floor(dmg/3)));addLog("🩸 吸血回复")}
+  if(player.vamp)player.hp=Math.min(player.maxHp,player.hp+Math.max(1,Math.floor(dmg/3)));
   if(e.hp<=0){
     enemies.splice(enemies.indexOf(e),1);
-    addLog(`☠ ${e.n} 被击败！`);
-    if(e.boss){
-      const st=itemAt(e.x,e.y);if(st)st.locked=false;
-      msg="Boss 已消灭！踏上楼梯 ⬇ 前往下一层。";
-    }
+    const g=e.gold+(player.looty||0);
+    gold+=g;
+    addLog(`☠ ${e.n} 被击败！金币 +${g}`);
+    if(e.elite)offerRelics(3);
+    if(e.boss){const st=itemAt(e.x,e.y);if(st)st.locked=false;msg="Boss 已消灭！踏上楼梯 ⬇ 前往下一层。"}
   }
   render();
+}
+
+function offerRelics(n){
+  const opts=shuffle(RELICS).slice(0,n);
+  const ov=document.createElement("div");ov.className="overlay";ov.id="relicPick";
+  ov.innerHTML=`<div class="box"><h2>精英掉落 · 选择遗物</h2><div class="chars">${opts.map((r,i)=>`<div class="ch" data-i="${i}"><div class="ico">✨</div><h4>${r.n}</h4><div class="ds">${r.d}</div></div>`).join("")}</div></div>`;
+  document.body.appendChild(ov);
+  ov.querySelectorAll(".ch").forEach(el=>el.onclick=()=>{
+    const r=opts[+el.dataset.i];r.f(player);relics.push(r);addLog(`✨ 获得遗物【${r.n}】${r.d}`);ov.remove();render();
+  });
 }
 
 function pickItem(it){
@@ -230,30 +253,27 @@ function pickItem(it){
   else if(it.kind==="pot"){pots++;addLog("🧪 获得药水")}
   else if(it.kind==="relic"){
     const r=RELICS[rnd(RELICS.length)];
-    r.f(player);relics.push(r);
-    addLog(`✨ 获得遗物【${r.n}】${r.d}`);
+    r.f(player);relics.push(r);addLog(`✨ 获得遗物【${r.n}】${r.d}`);
   }else if(it.kind==="stair"&&!it.locked){
-    floor++;
-    addLog(`⬇ 下潜到第 ${floor} 层`);
+    floor++;addLog(`⬇ 下潜到第 ${floor} 层`);
     const rooms=makeMap();place(rooms);render();return;
   }
 }
 
 function endTurn(){
-  if(player.regen){player.steps++;if(player.steps%10===0){player.hp=Math.min(player.maxHp,player.hp+2)}}
+  if(player.regen){player.steps++;if(player.steps%9===0){player.hp=Math.min(player.maxHp,player.hp+3)}}
   enemies.forEach(e=>{
-    if(e.boss&&e.hp<=0)return;
     const d=Math.abs(e.x-player.x)+Math.abs(e.y-player.y);
     if(d<=player.sight&&hasLOS(e.x,e.y,player.x,player.y)){
       e.awake=true;
       if(d===1){
-        const dmg=Math.max(1,e.atk-player.def+roll(0,2));
+        const dmg=Math.max(1,e.atk-player.def-(player.thorns||0)+roll(0,2));
         player.hp-=dmg;
         addLog(`${e.n} 攻击你，造成 ${dmg} 伤害`);
         if(player.hp<=0){player.hp=0;die();return}
       }else{
         const dx=Math.sign(player.x-e.x),dy=Math.sign(player.y-e.y);
-        if(Math.abs(dx)>Math.abs(dy)){
+        if(Math.abs(dx)>=Math.abs(dy)){
           if(map[e.y][e.x+dx]!=="#"&&!enemyAt(e.x+dx,e.y))e.x+=dx;
         }else{
           if(map[e.y+dy][e.x]!=="#"&&!enemyAt(e.x,e.y+dy))e.y+=dy;
@@ -261,20 +281,12 @@ function endTurn(){
       }
     }
   });
-  computeVisible();render();checkFloor();
-}
-
-function checkFloor(){
-  const st=items.find(i=>i.kind==="stair");
-  if(st&&player.x===st.x&&player.y===st.y&&!st.locked&&!dead){
-    floor++;addLog(`⬇ 下潜到第 ${floor} 层`);
-    const rooms=makeMap();place(rooms);render();
-  }
+  computeVisible();render();
 }
 
 function die(){
   dead=true;
-  if(floor>best){best=floor;localStorage.setItem(BEST_KEY,best);$("best").textContent=best}
+  if(floor>best){best=floor;localStorage.setItem(BEST_KEY,best)}
   addLog("💀 你倒在了深渊回廊…");
   msg=`死亡！到达第 ${floor} 层。点击"重新开始"再来一局。`;
   render();
@@ -284,26 +296,22 @@ function render(){
   $("floor").textContent=floor;
   $("best").textContent=best;
   $("hp").textContent=`${player.hp}/${player.maxHp}`;
-  $("hpbar").style.width=Math.max(0,player.hp/player.maxHp*100)+"%";
   $("atk").textContent=player.atk;
   $("def").textContent=player.def;
   $("gold").textContent=gold;
   $("pot").textContent=pots;
   $("relics").innerHTML=relics.length?relics.map(r=>`<div>✨${r.n}（${r.d}）</div>`).join(""):"（无）";
-  $("msg").textContent=msg;
+  $("msg").textContent=msg+(nearMerchant()?" ｜ 按 B 打开商店":"");
   ctx.fillStyle="#0d1117";ctx.fillRect(0,0,cv.width,cv.height);
   const vis=new Set(visible);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
     if(!explored[y][x])continue;
     const seen=vis.has(x+","+y);
-    const c=map[y][x];
-    ctx.fillStyle=c==="#"
+    ctx.fillStyle=map[y][x]==="#"
       ?(seen?"#3a4260":"#232a42")
       :(seen?"#12161f":"#0f131b");
     ctx.fillRect(x*T,y*T,T,T);
-    if(c==="."&&seen)ctx.fillStyle="rgba(255,255,255,.04)";
-    if(!seen)continue;
-    if(c==="."){ctx.fillStyle="rgba(255,255,255,.05)";ctx.fillRect(x*T,y*T,T,T)}
+    if(seen&&map[y][x]==="."){ctx.fillStyle="rgba(255,255,255,.05)";ctx.fillRect(x*T,y*T,T,T)}
   }
   items.forEach(it=>{
     if(!vis.has(it.x+","+it.y))return;
@@ -311,10 +319,14 @@ function render(){
     ctx.fillText(it.glyph,it.x*T+T/2,it.y*T+T/2);
     if(it.kind==="stair"){
       ctx.fillStyle=it.locked?"#ff6b81":"#3ddc97";
-      ctx.font=Math.max(9,T*0.55)+"px sans-serif";
-      ctx.fillText(it.locked?"锁定":"下层",it.x*T+T/2,it.y*T+T-2);
+      ctx.font=Math.max(9,T*0.5)+"px sans-serif";
+      ctx.fillText(it.locked?"锁定":"下层",it.x*T+T/2,it.y*T+T-1);
     }
   });
+  if(merchant&&vis.has(merchant.x+","+merchant.y)){
+    ctx.font=T+"px serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText("🏪",merchant.x*T+T/2,merchant.y*T+T/2);
+  }
   enemies.forEach(e=>{
     if(!vis.has(e.x+","+e.y))return;
     ctx.font=T+"px serif";ctx.textAlign="center";ctx.textBaseline="middle";
@@ -330,13 +342,35 @@ function render(){
   renderLog();
 }
 
-function startGame(){
-  floor=1;gold=0;pots=2;relics=[];log=[];dead=false;
-  player=newPlayer();
-  if(best>=5)player.atk+=2;
-  if(best>=10)player.maxHp+=25,player.hp+=25;
-  if(best>=15)player.def+=2;
+function startGame(cid){
+  floor=1;gold=0;pots=2;relics=[];logs=[];dead=false;
+  newPlayer(cid);
+  if(best>=8)player.atk+=2;
+  if(best>=16)player.maxHp+=25,player.hp+=25;
+  if(best>=24)player.def+=2;
   const rooms=makeMap();place(rooms);render();
+}
+
+function openShop(){
+  if(!nearMerchant()){addLog("附近没有商人");return}
+  const items=[
+    {n:"疗伤药水",pr:20,d:"恢复 30 生命",f:()=>{player.hp=Math.min(player.maxHp,player.hp+30)}},
+    {n:"磨刀石",pr:30,d:"攻击+2",f:()=>player.atk+=2},
+    {n:"锻体丹",pr:25,d:"生命上限+20",f:()=>{player.maxHp+=20;player.hp+=20}},
+    {n:"神秘遗物",pr:40,d:"随机获得一件遗物",f:()=>{const r=RELICS[rnd(RELICS.length)];r.f(player);relics.push(r);addLog(`✨ 获得遗物【${r.n}】`)}},
+    {n:"精炼药水",pr:15,d:"药水+1",f:()=>pots++}
+  ];
+  const grid=$("shopGrid");grid.innerHTML="";
+  items.forEach((it,i)=>{
+    const d=document.createElement("div");d.className="sitem";
+    d.innerHTML=`<b>${it.n}</b><div style="font-size:11px;color:var(--muted);margin-top:4px">${it.d}</div><div class="pr">${it.pr} 金</div>`;
+    d.onclick=()=>{
+      if(gold<it.pr){addLog("金币不足");return}
+      gold-=it.pr;it.f();addLog(`🛒 购买【${it.n}】`);d.style.opacity=.4;d.style.pointerEvents="none";render();
+    };
+    grid.appendChild(d);
+  });
+  document.getElementById("shop").style.display="flex";
 }
 
 document.addEventListener("keydown",e=>{
@@ -344,28 +378,38 @@ document.addEventListener("keydown",e=>{
   const map={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};
   if(map[k]){e.preventDefault();tryMove(map[k][0],map[k][1])}
   else if(k==="h"){usePot()}
-  else if(k==="r"){startGame()}
+  else if(k==="b"){openShop()}
+  else if(k==="r"){location.reload()}
 });
-
 function usePot(){
   if(dead)return;
   if(pots<=0){addLog("没有药水了");return}
   if(player.hp>=player.maxHp){addLog("生命已满");return}
-  pots--;player.hp=Math.min(player.maxHp,player.hp+40);
-  addLog("🧪 使用药水，恢复 40 生命");
+  pots--;const heal=player.potx2?80:40;
+  player.hp=Math.min(player.maxHp,player.hp+heal);
+  addLog(`🧪 使用药水，恢复 ${heal} 生命`);
   computeVisible();render();
 }
-
 document.querySelectorAll("#pad button").forEach(b=>{
   b.addEventListener("click",()=>{
     const [dx,dy]=b.dataset.d.split(",").map(Number);
     if(dx===0&&dy===0)usePot();else tryMove(dx,dy);
   });
 });
-$("restart").onclick=startGame;
-$("help").onclick=()=>addLog("操作：方向键/WASD 移动与攻击 · H 喝药 · R 重开。击败怪物、捡金币药水遗物，找到 ⬇ 下潜。每5层有Boss！");
+$("restart").onclick=()=>location.reload();
+$("shopBtn").onclick=openShop;
+$("shopClose").onclick=()=>document.getElementById("shop").style.display="none";
 
-startGame();
+function initSelect(){
+  const box=$("chars");
+  CLASSES.forEach(c=>{
+    const d=document.createElement("div");d.className="ch";
+    d.innerHTML=`<div class="ico">${c.ico}</div><h4>${c.name}</h4><div class="ps">${c.ps}</div><div class="ds">${c.ds} · 生命 ${c.hp} / 攻击 ${c.atk} / 视野 ${c.sight}</div>`;
+    d.onclick=()=>startGame(c.id);
+    box.appendChild(d);
+  });
+}
+initSelect();
 </script>
 </body>
 </html>
