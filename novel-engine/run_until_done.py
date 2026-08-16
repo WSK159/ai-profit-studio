@@ -29,6 +29,14 @@ def ended(d):
         return False
 
 
+def chapter_count(d):
+    try:
+        with open(os.path.join(d, "state.json"), encoding="utf-8") as f:
+            return int(json.load(f).get("next", 1)) - 1
+    except Exception:
+        return 0
+
+
 def safe_dir():
     return os.getcwd().replace("\\", "/")
 
@@ -62,9 +70,11 @@ def main():
                 print("%s 已完结，跳过" % d, flush=True)
                 continue
             print("开始连载：%s" % d, flush=True)
-            r = subprocess.run(
-                [sys.executable, "novel-engine/serialize.py", "--novel", d, "--chapters", "10"]
-            )
+            cmd = [sys.executable, "novel-engine/serialize.py", "--novel", d, "--chapters", "10"]
+            if chapter_count(d) >= 600:
+                print("%s 已超 600 章仍未完结，进入强制大结局模式" % d, flush=True)
+                cmd = [sys.executable, "novel-engine/serialize.py", "--novel", d, "--chapters", "4", "--finale"]
+            r = subprocess.run(cmd)
             if r.returncode != 0:
                 print("警告：%s 本轮失败，下一轮重试" % d, flush=True)
         git(["add", "-A"])

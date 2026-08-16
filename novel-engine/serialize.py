@@ -77,7 +77,7 @@ def briefs_from_outline(outline):
     return briefs
 
 
-def build_prompts(novel_dir, start, count, state):
+def build_prompts(novel_dir, start, count, state, finale=False):
     outline = read_md(novel_dir, "outline.md")
     bible = read_md(novel_dir, "world-bible.md")
     readme = read_md(novel_dir, "README.md")
@@ -116,6 +116,13 @@ def build_prompts(novel_dir, start, count, state):
         "10. 剧情接近自然终点（主线冲突基本解决、主要伏笔基本回收、人物弧光完成）时，"
         "本章直接写大结局收尾，不再留悬念，并在摘要后另起一行输出 `[ENDING] 1`；否则输出 `[ENDING] 0`。"
     )
+    if finale:
+        system += (
+            "\n【重要·最终收尾】当前已进入全书最终收尾批次：必须推进到彻底结局。"
+            "本章直接进入最终决战/大和解/真相揭晓，所有主要伏笔必须回收，人物弧光完成，"
+            "结尾写出完整大结局（含结局余韵与后记式收束），禁止再留新悬念。"
+            "摘要后必须输出 `[ENDING] 1`。"
+        )
 
     user = (
         "作品：《%s》\n\n"
@@ -238,6 +245,7 @@ def main():
     ap.add_argument("--start", type=int, default=0, help="从第几章开始（0 表示接续 state.json）")
     ap.add_argument("--force", action="store_true", help="覆盖已存在的章节文件")
     ap.add_argument("--no-qa", action="store_true", help="跳过每批一致性检查")
+    ap.add_argument("--finale", action="store_true", help="强制本批为最终收尾（写大结局并标记完结）")
     args = ap.parse_args()
 
     novel_dir = args.novel
@@ -262,7 +270,7 @@ def main():
 
     for batch_start in range(start, start + args.chapters, PER_CALL):
         batch_count = min(PER_CALL, start + args.chapters - batch_start)
-        system, user = build_prompts(novel_dir, batch_start, batch_count, state)
+        system, user = build_prompts(novel_dir, batch_start, batch_count, state, finale=args.finale)
         print("生成中：第 %d-%d 章…" % (batch_start, batch_start + batch_count - 1), flush=True)
         text = call_deepseek(system, user)
         chapters, state_text = parse_batch(text)
@@ -300,6 +308,9 @@ def main():
         if cons:
             append_qa_log(novel_dir, batch_start, cons)
         state["ending"] = bool(ending)
+        if args.finale:
+            state["ending"] = True
+            ending = 1
         save_state(novel_dir, state)
         if ending:
             print("  剧情已自然完结！本作品到此收尾。", flush=True)
