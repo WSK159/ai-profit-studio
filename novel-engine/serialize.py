@@ -309,8 +309,9 @@ def main():
             state["summary"] = summary
         if cons:
             append_qa_log(novel_dir, batch_start, cons)
+        prev_ending = state.get("ending", False)
         state["ending"] = bool(ending)
-        if args.keep_end and state.get("ending"):
+        if args.keep_end and prev_ending:
             ending = 1
             state["ending"] = True
         if args.finale:
