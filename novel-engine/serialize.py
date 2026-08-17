@@ -246,6 +246,8 @@ def main():
     ap.add_argument("--force", action="store_true", help="覆盖已存在的章节文件")
     ap.add_argument("--no-qa", action="store_true", help="跳过每批一致性检查")
     ap.add_argument("--finale", action="store_true", help="强制本批为最终收尾（写大结局并标记完结）")
+    ap.add_argument("--continue-after-end", action="store_true", help="作品已完结时仍允许补写/补结局")
+    ap.add_argument("--keep-end", action="store_true", help="保持现有完结标记不变")
     args = ap.parse_args()
 
     novel_dir = args.novel
@@ -263,7 +265,7 @@ def main():
         if existing:
             state["next"] = max(existing) + 1
     start = args.start if args.start else state.get("next", 1)
-    if state.get("ending"):
+    if state.get("ending") and not args.continue_after_end:
         print("该作品已自然完结（共 %d 章），无需继续。" % (state["next"] - 1), flush=True)
         return
     written = 0
@@ -308,6 +310,9 @@ def main():
         if cons:
             append_qa_log(novel_dir, batch_start, cons)
         state["ending"] = bool(ending)
+        if args.keep_end and state.get("ending"):
+            ending = 1
+            state["ending"] = True
         if args.finale:
             state["ending"] = True
             ending = 1
